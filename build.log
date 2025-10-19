@@ -1,0 +1,61 @@
+
+> lewis-loyalty@1.0.0 build
+> next build
+
+   ▲ Next.js 15.5.5
+   - Environments: .env.local, .env
+   - Experiments (use with caution):
+     · serverActions
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings in 24.2s
+
+./node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js
+A Node.js API is used (process.version at line: 3) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+./node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js
+./node_modules/jsonwebtoken/lib/validateAsymmetricKey.js
+./node_modules/jsonwebtoken/verify.js
+./node_modules/jsonwebtoken/index.js
+
+./node_modules/jsonwebtoken/lib/psSupported.js
+A Node.js API is used (process.version at line: 3) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+./node_modules/jsonwebtoken/lib/psSupported.js
+./node_modules/jsonwebtoken/verify.js
+./node_modules/jsonwebtoken/index.js
+
+./node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js
+A Node.js API is used (process.version at line: 3) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+./node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js
+./node_modules/jsonwebtoken/lib/validateAsymmetricKey.js
+./node_modules/jsonwebtoken/verify.js
+./node_modules/jsonwebtoken/index.js
+
+./node_modules/jws/lib/data-stream.js
+A Node.js API is used (process.nextTick at line: 29) which is not supported in the Edge Runtime.
+Learn more: https://nextjs.org/docs/api-reference/edge-runtime
+
+Import trace for requested module:
+./node_modules/jws/lib/data-stream.js
+./node_modules/jws/lib/sign-stream.js
+./node_modules/jws/index.js
+./node_modules/jsonwebtoken/decode.js
+./node_modules/jsonwebtoken/index.js
+
+ ✓ Compiled successfully in 4.9min
+   Linting and checking validity of types ...
+Failed to compile.
+
+app/api/customer/[phone]/rewards/route.ts
+Type error: Route "app/api/customer/[phone]/rewards/route.ts" has an invalid "GET" export:
+  Type "{ params: { phone: string; }; }" is not a valid type for the function's second argument.
+
+Next.js build worker exited with code: 1 and signal: null
