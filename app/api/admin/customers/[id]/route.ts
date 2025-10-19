@@ -9,8 +9,9 @@ import { verifyAdminToken } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     // Verify admin authentication
     const token = request.cookies.get('token')?.value;
