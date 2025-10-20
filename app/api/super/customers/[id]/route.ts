@@ -47,7 +47,7 @@ export async function GET(
 
     // Calculate statistics
     const totalVisits = visitHistory.length;
-    const totalRewards = rewardHistory.reduce((sum, reward) => sum + reward.amount, 0);
+    const totalRewards = rewardHistory.length; // Count of rewards, not monetary amount
     const totalSpent = visitHistory.reduce((sum, visit) => sum + (visit.amountSpent || 0), 0);
     const averageSpendingPerVisit = totalVisits > 0 ? totalSpent / totalVisits : 0;
 
@@ -175,7 +175,6 @@ export async function GET(
       rewardHistory: rewardHistory.map(reward => ({
         _id: reward._id,
         rewardType: reward.rewardType,
-        amount: reward.amount,
         earnedAt: reward.earnedAt,
         storeId: {
           _id: reward.storeId._id,
