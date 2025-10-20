@@ -262,7 +262,7 @@ export default function SuperAdminDashboard() {
                           <SelectValue placeholder="Select a store" />
                         </SelectTrigger>
                         <SelectContent>
-                          {stores.filter(store => !store.adminId).map((store) => (
+                          {stores.filter(store => !store.adminId && store.isActive).map((store) => (
                             <SelectItem key={store._id} value={store._id}>
                               {store.name} - {store.address}
                             </SelectItem>

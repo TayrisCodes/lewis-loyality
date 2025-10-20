@@ -29,7 +29,13 @@ export async function POST(request: NextRequest) {
     await dbConnect();
     await requireSuperAdmin([PERMISSIONS.CREATE_STORE]);
 
-    const { name, address } = await request.json();
+    const { name, address, adminId } = await request.json();
+    
+    // Remove adminId if it's empty string to prevent database errors
+    const storeData: any = { name, address };
+    if (adminId && adminId.trim() !== '') {
+      storeData.adminId = adminId;
+    }
 
     if (!name || !address) {
       return NextResponse.json(
@@ -43,11 +49,7 @@ export async function POST(request: NextRequest) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
     tomorrow.setHours(0, 0, 0, 0);
 
-    const store = new Store({
-      name,
-      address,
-      // adminId will be assigned when creating an admin user
-    });
+    const store = new Store(storeData);
 
     // Save first to get the _id
     await store.save();
