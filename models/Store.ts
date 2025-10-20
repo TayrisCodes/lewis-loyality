@@ -8,9 +8,9 @@ export interface IStore extends Document {
   dailyCode?: string;
   qrCodeUrl?: string;
   adminId?: mongoose.Types.ObjectId;
-  qrToken: string;
-  qrUrl: string;
-  qrExpiresAt: Date;
+  qrToken?: string;
+  qrUrl?: string;
+  qrExpiresAt?: Date;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -50,16 +50,17 @@ const StoreSchema = new Schema(
     },
     qrToken: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
+      sparse: true, // Allow multiple null values
     },
     qrUrl: {
       type: String,
-      required: true,
+      required: false,
     },
     qrExpiresAt: {
       type: Date,
-      required: true,
+      required: false,
     },
     isActive: {
       type: Boolean,
