@@ -153,8 +153,8 @@ export async function GET(
         monthlyVisits: monthlyVisitsArray
       },
       storeInfo: {
-        name: admin.storeId.name,
-        address: admin.storeId.address
+        name: (admin.storeId as any).name,
+        address: (admin.storeId as any).address
       }
     };
 

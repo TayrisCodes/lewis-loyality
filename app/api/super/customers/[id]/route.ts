@@ -162,9 +162,9 @@ export async function GET(
       visitHistory: visitHistory.map(visit => ({
         _id: visit._id,
         storeId: {
-          _id: visit.storeId._id,
-          name: visit.storeId.name,
-          address: visit.storeId.address
+          _id: (visit.storeId as any)._id,
+          name: (visit.storeId as any).name,
+          address: (visit.storeId as any).address
         },
         visitDate: visit.timestamp,
         rewardsEarned: visit.rewardEarned,
@@ -175,8 +175,8 @@ export async function GET(
         rewardType: reward.rewardType,
         earnedAt: reward.issuedAt,
         storeId: {
-          _id: reward.storeId._id,
-          name: reward.storeId.name
+          _id: (reward.storeId as any)._id,
+          name: (reward.storeId as any).name
         }
       })),
       statistics: {
