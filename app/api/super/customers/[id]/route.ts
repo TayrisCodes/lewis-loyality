@@ -152,7 +152,6 @@ export async function GET(
       _id: customer._id,
       name: customer.name,
       phone: customer.phone,
-      email: customer.email,
       totalVisits,
       totalRewards,
       totalSpent,
