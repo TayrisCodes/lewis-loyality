@@ -31,9 +31,16 @@ export async function POST(request: NextRequest) {
 
     const { name, email, password, storeId } = await request.json();
 
-    if (!name || !email || !password || !storeId) {
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'Name, email, and password are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'Store assignment is required for admin users' },
         { status: 400 }
       );
     }
@@ -42,6 +49,14 @@ export async function POST(request: NextRequest) {
     if (!store) {
       return NextResponse.json(
         { error: 'Store not found' },
+        { status: 400 }
+      );
+    }
+
+    // Check if store already has an admin
+    if (store.adminId) {
+      return NextResponse.json(
+        { error: 'This store already has an admin assigned' },
         { status: 400 }
       );
     }

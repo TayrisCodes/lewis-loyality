@@ -66,6 +66,13 @@ export default function SuperAdminAdminsPage() {
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that a store is selected
+    if (!adminForm.storeId) {
+      alert('Please select a store for the admin');
+      return;
+    }
+    
     try {
       const response = await fetch('/api/super/admins', {
         method: 'POST',
@@ -77,9 +84,13 @@ export default function SuperAdminAdminsPage() {
         setCreateAdminOpen(false);
         setAdminForm({ name: '', email: '', password: '', storeId: '' });
         fetchData();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to create admin');
       }
     } catch (error) {
       console.error('Error creating admin:', error);
+      alert('Failed to create admin');
     }
   };
 
@@ -151,8 +162,8 @@ export default function SuperAdminAdminsPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="admin-store">Assign Store (Optional)</Label>
-                    <Select value={adminForm.storeId} onValueChange={(value) => setAdminForm({ ...adminForm, storeId: value })}>
+                    <Label htmlFor="admin-store">Assign Store <span className="text-red-500">*</span></Label>
+                    <Select value={adminForm.storeId} onValueChange={(value) => setAdminForm({ ...adminForm, storeId: value })} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a store" />
                       </SelectTrigger>

@@ -41,7 +41,7 @@ const UserSchema = new Schema(
     storeId: {
       type: Schema.Types.ObjectId,
       ref: "Store",
-      // Required for admin role, optional for superadmin
+      required: false, // Will be validated in pre-save hook for admin role
     },
     isActive: {
       type: Boolean,
@@ -53,6 +53,15 @@ const UserSchema = new Schema(
     timestamps: true,
   }
 );
+
+// Validation: Require storeId for admin role
+UserSchema.pre('save', function(next) {
+  if (this.role === 'admin' && !this.storeId) {
+    next(new Error('Store assignment is required for admin users'));
+  } else {
+    next();
+  }
+});
 
 // Indexes
 UserSchema.index({ email: 1, role: 1 });

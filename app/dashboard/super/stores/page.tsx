@@ -37,7 +37,7 @@ export default function SuperAdminStoresPage() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
   const [createStoreOpen, setCreateStoreOpen] = useState(false);
-  const [storeForm, setStoreForm] = useState({ name: '', address: '', adminId: '' });
+  const [storeForm, setStoreForm] = useState({ name: '', address: '' });
 
   useEffect(() => {
     fetchData();
@@ -77,11 +77,15 @@ export default function SuperAdminStoresPage() {
 
       if (response.ok) {
         setCreateStoreOpen(false);
-        setStoreForm({ name: '', address: '', adminId: '' });
+        setStoreForm({ name: '', address: '' });
         fetchData();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to create store');
       }
     } catch (error) {
       console.error('Error creating store:', error);
+      alert('Failed to create store');
     }
   };
 
@@ -154,21 +158,6 @@ export default function SuperAdminStoresPage() {
                       onChange={(e) => setStoreForm({ ...storeForm, address: e.target.value })}
                       required
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor="store-admin">Assign Admin (Optional)</Label>
-                    <Select value={storeForm.adminId} onValueChange={(value) => setStoreForm({ ...storeForm, adminId: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an admin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {admins.filter(admin => !admin.storeId).map((admin) => (
-                          <SelectItem key={admin._id} value={admin._id}>
-                            {admin.name} ({admin.email})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                   <Button type="submit" className="w-full">Create Store</Button>
                 </form>

@@ -82,7 +82,7 @@ export default function SuperAdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [createStoreOpen, setCreateStoreOpen] = useState(false);
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
-  const [storeForm, setStoreForm] = useState({ name: '', address: '', adminId: '' });
+  const [storeForm, setStoreForm] = useState({ name: '', address: '' });
   const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', storeId: '' });
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export default function SuperAdminDashboard() {
     try {
       await ApiClient.post('/api/super/stores', storeForm);
       setCreateStoreOpen(false);
-      setStoreForm({ name: '', address: '', adminId: '' });
+      setStoreForm({ name: '', address: '' });
       fetchData();
     } catch (error: any) {
       console.error('Error creating store:', error);
@@ -144,6 +144,13 @@ export default function SuperAdminDashboard() {
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that a store is selected
+    if (!adminForm.storeId) {
+      alert('Please select a store for the admin');
+      return;
+    }
+    
     try {
       await ApiClient.post('/api/super/admins', adminForm);
       setCreateAdminOpen(false);
@@ -202,21 +209,6 @@ export default function SuperAdminDashboard() {
                         required
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="store-admin">Assign Admin (Optional)</Label>
-                      <Select value={storeForm.adminId} onValueChange={(value) => setStoreForm({ ...storeForm, adminId: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an admin" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {admins.filter(admin => !admin.storeId).map((admin) => (
-                            <SelectItem key={admin._id} value={admin._id}>
-                              {admin.name} ({admin.email})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <Button type="submit" className="w-full">Create Store</Button>
                   </form>
                 </DialogContent>
@@ -264,8 +256,8 @@ export default function SuperAdminDashboard() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="admin-store">Assign Store (Optional)</Label>
-                      <Select value={adminForm.storeId} onValueChange={(value) => setAdminForm({ ...adminForm, storeId: value })}>
+                      <Label htmlFor="admin-store">Assign Store <span className="text-red-500">*</span></Label>
+                      <Select value={adminForm.storeId} onValueChange={(value) => setAdminForm({ ...adminForm, storeId: value })} required>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a store" />
                         </SelectTrigger>

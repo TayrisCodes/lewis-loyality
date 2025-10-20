@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (new Date() > store.qrExpiresAt) {
+    if (!store.qrExpiresAt || new Date() > store.qrExpiresAt) {
       return NextResponse.json(
         { error: 'QR code has expired' },
         { status: 400 }

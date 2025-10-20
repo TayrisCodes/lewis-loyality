@@ -29,23 +29,13 @@ export async function POST(request: NextRequest) {
     await dbConnect();
     await requireSuperAdmin([PERMISSIONS.CREATE_STORE]);
 
-    const { name, address, adminId } = await request.json();
+    const { name, address } = await request.json();
 
     if (!name || !address) {
       return NextResponse.json(
         { error: 'Name and address are required' },
         { status: 400 }
       );
-    }
-
-    if (adminId) {
-      const admin = await User.findById(adminId);
-      if (!admin || admin.role !== 'admin') {
-        return NextResponse.json(
-          { error: 'Invalid admin user' },
-          { status: 400 }
-        );
-      }
     }
 
     // Generate initial QR
@@ -56,7 +46,7 @@ export async function POST(request: NextRequest) {
     const store = new Store({
       name,
       address,
-      adminId,
+      // adminId will be assigned when creating an admin user
     });
 
     // Save first to get the _id

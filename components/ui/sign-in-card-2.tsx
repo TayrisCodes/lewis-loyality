@@ -56,7 +56,7 @@ export function SignInCard() {
 
     try {
       // Determine which endpoint to use based on email
-      const isSuperAdmin = email === 'admin@lewisloyalty.com' || email === 'storeadmin@lewisloyalty.com';
+      const isSuperAdmin = email === 'admin@lewisloyalty.com';
       const endpoint = isSuperAdmin ? "/api/super/auth/login" : "/api/admin/auth/login";
 
       const response = await fetch(endpoint, {
