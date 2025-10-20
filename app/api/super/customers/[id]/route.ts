@@ -42,7 +42,7 @@ export async function GET(
     // Get reward history
     const rewardHistory = await Reward.find({ customerId })
       .populate('storeId', 'name')
-      .sort({ earnedAt: -1 })
+      .sort({ issuedAt: -1 })
       .limit(50);
 
     // Calculate statistics
@@ -173,7 +173,7 @@ export async function GET(
       rewardHistory: rewardHistory.map(reward => ({
         _id: reward._id,
         rewardType: reward.rewardType,
-        earnedAt: reward.earnedAt,
+        earnedAt: reward.issuedAt,
         storeId: {
           _id: reward.storeId._id,
           name: reward.storeId.name
