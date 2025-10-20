@@ -57,8 +57,8 @@ export async function GET(
     // Calculate statistics
     const totalVisits = visitHistory.length;
     const totalRewards = rewardHistory.length; // Count of rewards, not monetary amount
-    const totalSpent = visitHistory.reduce((sum, visit) => sum + (visit.amountSpent || 0), 0);
-    const averageSpendingPerVisit = totalVisits > 0 ? totalSpent / totalVisits : 0;
+    const totalSpent = 0; // Amount spent not tracked in current Visit model
+    const averageSpendingPerVisit = 0; // Not available without amountSpent
 
     // Calculate visit frequency
     const registeredDate = new Date(customer.registeredAt);
@@ -116,7 +116,7 @@ export async function GET(
     // Get monthly visits data for this store
     const monthlyVisits: { [key: string]: number } = {};
     visitHistory.forEach(visit => {
-      const month = new Date(visit.visitDate).toISOString().slice(0, 7); // YYYY-MM
+      const month = new Date(visit.timestamp).toISOString().slice(0, 7); // YYYY-MM
       monthlyVisits[month] = (monthlyVisits[month] || 0) + 1;
     });
 
@@ -134,14 +134,14 @@ export async function GET(
       totalRewards,
       totalSpent,
       averageVisitFrequency,
-      lastVisit: visitHistory[0]?.visitDate || null,
+      lastVisit: visitHistory[0]?.timestamp || null,
       registeredAt: customer.registeredAt,
       isActive: customer.isActive,
       visitHistory: visitHistory.map(visit => ({
         _id: visit._id,
-        visitDate: visit.visitDate,
-        rewardsEarned: visit.rewardsEarned,
-        amountSpent: visit.amountSpent
+        visitDate: visit.timestamp,
+        rewardsEarned: visit.rewardEarned,
+        amountSpent: 0 // Not tracked in current model
       })),
       rewardHistory: rewardHistory.map(reward => ({
         _id: reward._id,
