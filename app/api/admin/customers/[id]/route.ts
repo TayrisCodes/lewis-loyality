@@ -14,7 +14,7 @@ export async function GET(
   const params = await context.params;
   try {
     // Verify admin authentication
-    const token = request.cookies.get('token')?.value;
+    const token = request.cookies.get('auth-token')?.value;
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

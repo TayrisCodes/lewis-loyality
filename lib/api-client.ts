@@ -17,26 +17,62 @@ export class ApiClient {
     url: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const response = await fetch(url, {
-      ...options,
-      credentials: 'include', // Always include cookies
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        credentials: 'include', // Always include cookies
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
 
-    const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        // If JSON parsing fails, create a generic error
+        if (!response.ok) {
+          const error: ApiError = {
+            error: `Request failed with status ${response.status}`,
+            status: response.status,
+          };
+          throw error;
+        }
+        throw new Error('Failed to parse response');
+      }
 
-    if (!response.ok) {
-      const error: ApiError = {
-        error: data.error || 'An error occurred',
-        status: response.status,
+      if (!response.ok) {
+        const error: ApiError = {
+          error: data.error || data.message || 'An error occurred',
+          status: response.status,
+        };
+        throw error;
+      }
+
+      return data as T;
+    } catch (error) {
+      // If it's already an ApiError, re-throw it
+      if (error && typeof error === 'object' && 'error' in error && 'status' in error) {
+        throw error;
+      }
+      
+      // If it's a network error or other error, wrap it properly
+      if (error instanceof Error) {
+        const apiError: ApiError = {
+          error: error.message || 'Network error occurred',
+          status: 500,
+        };
+        throw apiError;
+      }
+      
+      // Fallback for unknown error types
+      const apiError: ApiError = {
+        error: 'An unexpected error occurred',
+        status: 500,
       };
-      throw error;
+      throw apiError;
     }
-
-    return data as T;
   }
 
   /**

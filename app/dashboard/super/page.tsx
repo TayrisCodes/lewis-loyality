@@ -123,9 +123,11 @@ export default function SuperAdminDashboard() {
     try {
       await ApiClient.post(`/api/super/stores/${storeId}/generate-qr`);
       fetchData(); // Refresh data
+      alert('QR code regenerated successfully!');
     } catch (error: any) {
       console.error('Error regenerating QR:', error);
-      alert(error.error || 'Failed to regenerate QR code');
+      const errorMessage = error?.error || error?.message || 'Failed to regenerate QR code. Please try again.';
+      alert(errorMessage);
     }
   };
 
@@ -136,9 +138,11 @@ export default function SuperAdminDashboard() {
       setCreateStoreOpen(false);
       setStoreForm({ name: '', address: '' });
       fetchData();
+      alert('Store created successfully!');
     } catch (error: any) {
       console.error('Error creating store:', error);
-      alert(error.error || 'Failed to create store');
+      const errorMessage = error?.error || error?.message || 'Failed to create store. Please try again.';
+      alert(errorMessage);
     }
   };
 
@@ -156,9 +160,11 @@ export default function SuperAdminDashboard() {
       setCreateAdminOpen(false);
       setAdminForm({ name: '', email: '', password: '', storeId: '' });
       fetchData();
+      alert('Admin created successfully!');
     } catch (error: any) {
       console.error('Error creating admin:', error);
-      alert(error.error || 'Failed to create admin');
+      const errorMessage = error?.error || error?.message || 'Failed to create admin. Please try again.';
+      alert(errorMessage);
     }
   };
 

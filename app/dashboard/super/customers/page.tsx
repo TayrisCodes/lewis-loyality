@@ -85,6 +85,8 @@ export default function SuperAdminCustomersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [searchInput, setSearchInput] = useState(''); // Local search input state
+  const [isSearching, setIsSearching] = useState(false); // Search loading indicator
   
   const [filters, setFilters] = useState<CustomerFilters>({
     search: '',
@@ -99,6 +101,19 @@ export default function SuperAdminCustomersPage() {
 
   const itemsPerPage = 10;
 
+  // Debounced search effect - only triggers API call after user stops typing
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (searchInput !== filters.search) {
+        setFilters(prev => ({ ...prev, search: searchInput }));
+        setCurrentPage(1);
+      }
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchInput]);
+
+  // Main data fetching effect
   useEffect(() => {
     // Check if user is authenticated and is superadmin
     if (!AuthUtils.isAuthenticated() || !AuthUtils.isSuperAdmin()) {
@@ -154,6 +169,7 @@ export default function SuperAdminCustomersPage() {
   };
 
   const clearFilters = () => {
+    setSearchInput(''); // Clear search input
     setFilters({
       search: '',
       store: '',
@@ -247,21 +263,24 @@ export default function SuperAdminCustomersPage() {
                     <Input
                       id="search"
                       placeholder="Name, phone, email..."
-                      value={filters.search}
-                      onChange={(e) => handleFilterChange('search', e.target.value)}
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
                       className="pl-10"
                     />
+                    {searchInput && searchInput !== filters.search && (
+                      <RefreshCw className="absolute right-3 top-3 h-4 w-4 text-gray-400 animate-spin" />
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <Label htmlFor="store">Store</Label>
-                  <Select value={filters.store} onValueChange={(value) => handleFilterChange('store', value)}>
+                  <Select value={filters.store || 'all'} onValueChange={(value) => handleFilterChange('store', value === 'all' ? '' : value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="All Stores" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Stores</SelectItem>
+                      <SelectItem value="all">All Stores</SelectItem>
                       {stores.map((store) => (
                         <SelectItem key={store._id} value={store._id}>
                           {store.name}
@@ -273,12 +292,12 @@ export default function SuperAdminCustomersPage() {
 
                 <div>
                   <Label htmlFor="admin">Admin</Label>
-                  <Select value={filters.admin} onValueChange={(value) => handleFilterChange('admin', value)}>
+                  <Select value={filters.admin || 'all'} onValueChange={(value) => handleFilterChange('admin', value === 'all' ? '' : value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="All Admins" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Admins</SelectItem>
+                      <SelectItem value="all">All Admins</SelectItem>
                       {admins.map((admin) => (
                         <SelectItem key={admin._id} value={admin._id}>
                           {admin.name}
@@ -290,12 +309,12 @@ export default function SuperAdminCustomersPage() {
 
                 <div>
                   <Label htmlFor="hasRewards">Rewards Status</Label>
-                  <Select value={filters.hasRewards} onValueChange={(value) => handleFilterChange('hasRewards', value)}>
+                  <Select value={filters.hasRewards || 'all'} onValueChange={(value) => handleFilterChange('hasRewards', value === 'all' ? '' : value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="All Customers" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Customers</SelectItem>
+                      <SelectItem value="all">All Customers</SelectItem>
                       <SelectItem value="true">Has Rewards</SelectItem>
                       <SelectItem value="false">No Rewards</SelectItem>
                     </SelectContent>

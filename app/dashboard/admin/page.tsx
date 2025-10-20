@@ -60,12 +60,12 @@ export default function AdminDashboard() {
       const [storeData, visitsData, customersData] = await Promise.all([
         ApiClient.get<Store>('/api/admin/store'),
         ApiClient.get<Visit[]>('/api/admin/visits'),
-        ApiClient.get<Customer[]>('/api/admin/customers'),
+        ApiClient.get<{ customers: Customer[] }>('/api/admin/customers?limit=100'),
       ]);
 
       setStore(storeData);
       setVisits(visitsData);
-      setCustomers(customersData);
+      setCustomers(customersData.customers);
     } catch (error: any) {
       console.error('Error fetching data:', error);
       setError(error.error || 'Failed to fetch data');
