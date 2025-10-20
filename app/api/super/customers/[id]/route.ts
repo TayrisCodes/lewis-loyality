@@ -52,7 +52,7 @@ export async function GET(
     const averageSpendingPerVisit = 0; // Not available without amountSpent
 
     // Calculate visit frequency
-    const registeredDate = new Date(customer.registeredAt);
+    const registeredDate = new Date(customer.createdAt);
     const now = new Date();
     const daysSinceRegistration = Math.ceil((now.getTime() - registeredDate.getTime()) / (1000 * 60 * 60 * 24));
     const averageVisitFrequency = daysSinceRegistration > 0 ? (totalVisits / daysSinceRegistration) * 7 : 0;
@@ -73,7 +73,7 @@ export async function GET(
 
     // Calculate streaks
     const sortedVisits = visitHistory
-      .map(v => new Date(v.visitDate))
+      .map(v => new Date(v.timestamp))
       .sort((a, b) => b.getTime() - a.getTime());
 
     let currentStreak = 0;
@@ -158,8 +158,7 @@ export async function GET(
       totalSpent,
       averageVisitFrequency,
       lastVisit: visitHistory[0]?.timestamp || null,
-      registeredAt: customer.registeredAt,
-      isActive: customer.isActive,
+      registeredAt: customer.createdAt,
       favoriteStore,
       visitHistory: visitHistory.map(visit => ({
         _id: visit._id,
