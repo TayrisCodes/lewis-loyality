@@ -155,3 +155,20 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
   }
   return authHeader.substring(7);
 }
+
+// Legacy auth functions for backward compatibility
+export function verifyAdminToken(token: string): JWTPayload | null {
+  const payload = verifyToken(token);
+  if (!payload || payload.role !== 'admin') {
+    return null;
+  }
+  return payload;
+}
+
+export function verifySuperAdminToken(token: string): JWTPayload | null {
+  const payload = verifyToken(token);
+  if (!payload || payload.role !== 'superadmin') {
+    return null;
+  }
+  return payload;
+}

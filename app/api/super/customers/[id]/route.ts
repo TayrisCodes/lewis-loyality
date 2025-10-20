@@ -4,6 +4,7 @@ import Customer from '@/models/Customer';
 import Visit from '@/models/Visit';
 import Store from '@/models/Store';
 import Reward from '@/models/Reward';
+import { verifySuperAdminToken } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
@@ -11,7 +12,17 @@ export async function GET(
 ) {
   const params = await context.params;
   try {
-    // TODO: Add proper authentication
+    // Verify super admin authentication
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const decoded = verifySuperAdminToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await dbConnect();
 
     const customerId = params.id;
