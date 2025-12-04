@@ -4,7 +4,9 @@ const MONGODB_URI = process.env.MONGODB_URI!;
 
 if (!MONGODB_URI) {
   throw new Error(
-    "Please define the MONGODB_URI environment variable inside .env.local"
+    "Please define the MONGODB_URI environment variable. " +
+    "For production, use MongoDB Atlas connection string: " +
+    "mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority"
   );
 }
 
@@ -35,13 +37,27 @@ async function dbConnect(): Promise<typeof mongoose> {
   }
 
   if (!cached.promise) {
-    const opts = {
+    // MongoDB Atlas optimized connection options
+    const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
+      // Atlas-specific optimizations
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      // Connection retry settings (already in connection string, but explicit here)
+      retryWrites: true,
+      // Compression (Atlas supports compression)
+      compressors: ['zlib'],
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log("✅ MongoDB connected successfully");
+      console.log("✅ MongoDB Atlas connected successfully");
+      console.log(`   Database: ${mongoose.connection.name}`);
+      console.log(`   Host: ${mongoose.connection.host}`);
       return mongoose;
+    }).catch((error) => {
+      console.error("❌ MongoDB Atlas connection error:", error.message);
+      throw error;
     });
   }
 

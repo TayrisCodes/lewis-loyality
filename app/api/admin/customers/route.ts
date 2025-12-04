@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       pipeline.push({ $match: matchStage });
     }
 
-    // Lookup visits to this specific store only
+    // Lookup visits to this specific store only (include receipt info)
     pipeline.push({
       $lookup: {
         from: 'visits',
@@ -85,21 +85,52 @@ export async function GET(request: NextRequest) {
                 ]
               }
             }
+          },
+          {
+            $lookup: {
+              from: 'receipts',
+              localField: 'receiptId',
+              foreignField: '_id',
+              as: 'receiptData'
+            }
+          },
+          {
+            $addFields: {
+              receiptInfo: { $arrayElemAt: ['$receiptData', 0] }
+            }
           }
         ],
         as: 'storeVisits'
       }
     });
 
-    // Add computed fields
+    // Add computed fields (including receipt-specific metrics)
     pipeline.push({
       $addFields: {
         totalVisits: { $size: '$storeVisits' },
         totalRewards: { $sum: '$storeVisits.rewardsEarned' },
+        qrVisits: {
+          $size: {
+            $filter: {
+              input: '$storeVisits',
+              as: 'visit',
+              cond: { $eq: ['$$visit.visitMethod', 'qr'] }
+            }
+          }
+        },
+        receiptVisits: {
+          $size: {
+            $filter: {
+              input: '$storeVisits',
+              as: 'visit',
+              cond: { $eq: ['$$visit.visitMethod', 'receipt'] }
+            }
+          }
+        },
         lastVisit: {
           $cond: {
             if: { $gt: [{ $size: '$storeVisits' }, 0] },
-            then: { $max: '$storeVisits.visitDate' },
+            then: { $max: '$storeVisits.timestamp' },
             else: null
           }
         },
@@ -144,7 +175,7 @@ export async function GET(request: NextRequest) {
     pipeline.push({ $skip: skip });
     pipeline.push({ $limit: limit });
 
-    // Project final fields
+    // Project final fields (including receipt metrics)
     pipeline.push({
       $project: {
         _id: 1,
@@ -152,6 +183,8 @@ export async function GET(request: NextRequest) {
         phone: 1,
         email: 1,
         totalVisits: 1,
+        qrVisits: 1,
+        receiptVisits: 1,
         totalRewards: 1,
         lastVisit: 1,
         registeredAt: 1,

@@ -16,7 +16,10 @@ import {
   LogOut,
   User,
   Menu,
-  X
+  X,
+  Receipt,
+  Power,
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AuthUtils } from '@/lib/api-client';
@@ -54,6 +57,21 @@ const superAdminNavItems = [
     icon: BarChart3,
   },
   {
+    title: 'System Control',
+    href: '/dashboard/super/system-control',
+    icon: Power,
+  },
+  {
+    title: 'All Receipts',
+    href: '/dashboard/super/all-receipts',
+    icon: Receipt,
+  },
+  {
+    title: 'Rules & Constraints',
+    href: '/dashboard/super/rules-settings',
+    icon: Shield,
+  },
+  {
     title: 'Check My Rewards',
     href: '/rewards',
     icon: Gift,
@@ -72,6 +90,12 @@ const adminNavItems = [
     icon: LayoutDashboard,
   },
   {
+    title: 'Receipts',
+    href: '/dashboard/admin/receipts',
+    icon: Receipt,
+    badge: true, // Will show badge for pending receipts
+  },
+  {
     title: 'Visits',
     href: '/dashboard/admin/visits',
     icon: Calendar,
@@ -85,11 +109,6 @@ const adminNavItems = [
     title: 'Rewards',
     href: '/dashboard/admin/rewards',
     icon: Gift,
-  },
-  {
-    title: 'Store',
-    href: '/dashboard/admin/store',
-    icon: Store,
   },
 ];
 
@@ -178,7 +197,10 @@ export function Sidebar({ role, onLogout }: SidebarProps) {
 
           {/* User section */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-            <div className="flex items-center gap-3 mb-3">
+            <Link
+              href={role === 'superadmin' ? '/dashboard/super/profile' : '/dashboard/admin/profile'}
+              className="flex items-center gap-3 mb-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+            >
               <div className="w-8 h-8 rounded-full bg-brand-coral/20 flex items-center justify-center">
                 <User className="h-4 w-4 text-brand-coral" />
               </div>
@@ -188,7 +210,7 @@ export function Sidebar({ role, onLogout }: SidebarProps) {
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{role}</p>
               </div>
-            </div>
+            </Link>
 
             <Button
               variant="outline"

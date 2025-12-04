@@ -38,6 +38,8 @@ A comprehensive QR-first loyalty system built with Next.js, TypeScript, MongoDB,
 
 ## Environment Variables
 
+### Development Setup (Local MongoDB)
+
 Create a `.env.local` file with the following variables:
 
 ```env
@@ -57,7 +59,31 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 WHATSAPP_ENABLED=false
 ```
 
-**Note**: Copy `.env.example` to `.env.local` and update the values for your environment.
+### Production Setup (MongoDB Atlas)
+
+For production deployment, use MongoDB Atlas. See **[PRODUCTION_ATLAS_SETUP.md](./PRODUCTION_ATLAS_SETUP.md)** for complete setup instructions.
+
+**Required production variables:**
+
+```env
+# MongoDB Atlas Connection (REQUIRED)
+MONGODB_URI=mongodb+srv://lewis:tare5960@cluster0.0gwcnq5.mongodb.net/dokimas_cosmetics?retryWrites=true&w=majority
+
+# Security Secrets (REQUIRED - Generate strong secrets!)
+JWT_SECRET=your-generated-jwt-secret-min-32-characters-long
+APP_SECRET=your-generated-app-secret-min-32-characters-long
+
+# Application URLs (REQUIRED - Replace with your domain)
+NEXT_PUBLIC_BASE_URL=https://yourdomain.com
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+
+# Environment
+NODE_ENV=production
+```
+
+**Note**: 
+- For development: Copy `.env.example` to `.env.local` and update values
+- For production: See [PRODUCTION_ATLAS_SETUP.md](./PRODUCTION_ATLAS_SETUP.md)
 
 ## Installation
 

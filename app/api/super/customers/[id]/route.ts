@@ -4,6 +4,7 @@ import Customer from '@/models/Customer';
 import Visit from '@/models/Visit';
 import Store from '@/models/Store';
 import Reward from '@/models/Reward';
+import Receipt from '@/models/Receipt';
 import { verifySuperAdminToken } from '@/lib/auth';
 
 export async function GET(
@@ -44,6 +45,17 @@ export async function GET(
       .populate('storeId', 'name')
       .sort({ issuedAt: -1 })
       .limit(50);
+
+    // Get all receipts for this customer
+    const receipts = await Receipt.find({ 
+      $or: [
+        { customerId: customerId },
+        { customerPhone: customer.phone }
+      ]
+    })
+      .populate('storeId', 'name address')
+      .sort({ createdAt: -1 })
+      .limit(100);
 
     // Calculate statistics
     const totalVisits = visitHistory.length;
@@ -186,7 +198,29 @@ export async function GET(
         currentStreak,
         monthlyVisits: monthlyVisitsArray,
         topStores: topStoresWithNames
-      }
+      },
+      receipts: receipts.map(receipt => ({
+        _id: receipt._id,
+        imageUrl: receipt.imageUrl,
+        status: receipt.status,
+        reason: receipt.reason,
+        flags: receipt.flags || [],
+        tin: receipt.tin,
+        invoiceNo: receipt.invoiceNo,
+        dateOnReceipt: receipt.dateOnReceipt,
+        totalAmount: receipt.totalAmount,
+        branchText: receipt.branchText,
+        ocrText: receipt.ocrText,
+        storeId: receipt.storeId ? {
+          _id: (receipt.storeId as any)._id,
+          name: (receipt.storeId as any).name,
+          address: (receipt.storeId as any).address
+        } : null,
+        createdAt: receipt.createdAt,
+        processedAt: receipt.processedAt,
+        reviewedBy: receipt.reviewedBy,
+        reviewedAt: receipt.reviewedAt
+      }))
     };
 
     return NextResponse.json(customerDetail);

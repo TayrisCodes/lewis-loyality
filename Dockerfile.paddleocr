@@ -1,0 +1,20 @@
+# PaddleOCR Dockerfile with protobuf fix
+# Fixes protobuf compatibility issues by downgrading to compatible version
+
+FROM 987846/paddleocr:latest
+
+# Set environment variable to use Python implementation (workaround for protobuf issue)
+ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+
+# Downgrade protobuf to compatible version (3.20.x)
+RUN pip install --no-cache-dir protobuf==3.20.2
+
+# Verify protobuf version
+RUN python -c "import google.protobuf; print(f'protobuf version: {google.protobuf.__version__}')" || true
+
+# Expose PaddleOCR port
+EXPOSE 8866
+
+# Keep the original entrypoint from base image
+# The base image should handle the service startup
+

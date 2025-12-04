@@ -1,0 +1,179 @@
+version: '3.8'
+
+# =============================================================================
+# Lewis Loyalty - Production Docker Compose Configuration
+# =============================================================================
+# This configuration uses MongoDB Atlas (cloud database) for production
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Lewis Loyalty Application (with Receipt Verification Support)
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: lewis-loyalty-app-prod
+    restart: always
+    ports:
+      - "3015:3000"
+    environment:
+      # Database - MongoDB Atlas Connection (REQUIRED)
+      # Get connection string from MongoDB Atlas Dashboard
+      # Format: mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
+      MONGODB_URI: ${MONGODB_URI}
+      
+      # Security (REQUIRED - Override with .env.production file)
+      JWT_SECRET: ${JWT_SECRET}
+      APP_SECRET: ${APP_SECRET}
+      
+      # URLs (REQUIRED - Replace with your production domain)
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+      
+      # Admin (Optional - for initial setup)
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@lewisloyalty.com}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin123}
+      
+      # WhatsApp Integration (Optional)
+      WHATSAPP_ENABLED: ${WHATSAPP_ENABLED:-false}
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_ID: ${WHATSAPP_PHONE_ID:-}
+      
+      # PaddleOCR Integration (Primary OCR - 5-15s, fastest)
+      # PaddleOCR is the primary OCR method (PRIORITY #1)
+      # Falls back to N8N if PaddleOCR fails, then Tesseract as last resort
+      PADDLEOCR_URL: ${PADDLEOCR_URL:-http://paddleocr:8866}
+      PADDLEOCR_TIMEOUT: ${PADDLEOCR_TIMEOUT:-45000}  # 45 seconds (PaddleOCR can take 15-30s for complex receipts)
+      
+      # N8N AI OCR Integration (Fallback - if PaddleOCR fails)
+      # Enable AI-powered OCR via N8N workflow as fallback
+      # Set N8N_OCR_WEBHOOK_URL to your N8N workflow webhook URL
+      # Example: http://n8n-production:5678/webhook/receipt-ocr
+      # Or: http://localhost:5680/webhook/receipt-ocr
+      N8N_OCR_ENABLED: ${N8N_OCR_ENABLED:-true}
+      N8N_OCR_WEBHOOK_URL: ${N8N_OCR_WEBHOOK_URL:-}
+      N8N_OCR_TIMEOUT: ${N8N_OCR_TIMEOUT:-8000}
+      
+      # Push Notifications - VAPID Keys (REQUIRED for push notifications)
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:contact@lewisretails.com}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      
+      # Environment
+      NODE_ENV: production
+    networks:
+      - lewis-network
+    volumes:
+      - ./public/qrcodes:/app/public/qrcodes          # QR code storage
+      - ./uploads/receipts:/app/uploads/receipts      # Receipt image uploads
+      - app_logs:/app/logs                            # Application logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # PaddleOCR Service (Fast OCR - 5-7s vs 30-90s Tesseract)
+  # ---------------------------------------------------------------------------
+  paddleocr:
+    build:
+      context: .
+      dockerfile: Dockerfile.paddleocr
+    container_name: lewis-loyalty-paddleocr
+    restart: always
+    ports:
+      - "8866:8866"
+    environment:
+      PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
+    networks:
+      - lewis-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8866/predict/ocr_system -X POST -H 'Content-Type: application/json' -d '{\"image\":\"\"}' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  lewis-network:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  app_logs:
+    driver: local
+
+# =============================================================================
+# USAGE INSTRUCTIONS - MongoDB Atlas Production Setup
+# =============================================================================
+#
+# PREREQUISITES:
+# 1. Create MongoDB Atlas account at https://www.mongodb.com/cloud/atlas
+# 2. Create a cluster and get your connection string
+# 3. Copy .env.production.example to .env.production
+# 4. Update .env.production with your Atlas connection string and secrets:
+#    - MONGODB_URI: Your Atlas connection string
+#    - JWT_SECRET: Generate strong random string (openssl rand -base64 32)
+#    - APP_SECRET: Generate strong random string (openssl rand -base64 32)
+#    - NEXT_PUBLIC_BASE_URL: Your production domain
+# 5. Ensure your Atlas cluster allows connections from your server IP
+#    (Network Access → Add IP Address → Allow Access from Anywhere for testing)
+# 6. Create uploads directory for receipt images:
+#    mkdir -p uploads/receipts public/qrcodes
+#    chmod 755 uploads/receipts public/qrcodes
+#
+# COMMANDS:
+# ---------
+# Start application:
+#   docker-compose -f docker-compose.production.yml --env-file .env.production up -d
+#
+# View logs:
+#   docker-compose -f docker-compose.production.yml logs -f
+#
+# View app logs only:
+#   docker-compose -f docker-compose.production.yml logs -f app
+#
+# Stop application:
+#   docker-compose -f docker-compose.production.yml down
+#
+# Restart application:
+#   docker-compose -f docker-compose.production.yml restart app
+#
+# Check MongoDB Atlas connection:
+#   docker-compose -f docker-compose.production.yml exec app node -e "require('./lib/db').default().then(() => console.log('Connected!')).catch(e => console.error(e))"
+#
+# Check receipt uploads directory:
+#   ls -la uploads/receipts/
+#
+# View receipt storage usage:
+#   du -sh uploads/receipts/*
+#
+# Scale application (multiple instances):
+#   docker-compose -f docker-compose.production.yml --env-file .env.production up -d --scale app=3
+#
+# Rebuild after code changes:
+#   docker-compose -f docker-compose.production.yml --env-file .env.production build --no-cache app
+#   docker-compose -f docker-compose.production.yml --env-file .env.production up -d
+#
+# =============================================================================
+

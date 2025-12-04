@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
 
     const visits = await Visit.find(query)
       .populate('customerId', 'name phone')
+      .populate('receiptId', 'imageUrl status totalAmount dateOnReceipt invoiceNo')
       .sort({ timestamp: -1 });
 
     return NextResponse.json(visits);

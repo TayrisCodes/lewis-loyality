@@ -5,14 +5,38 @@ import { extractTokenFromHeader, verifyToken } from "@/lib/auth";
 import { generateDailyCode } from "@/lib/utils";
 
 /**
- * GET /api/store - Get all active stores
+ * GET /api/store - Get all active stores or single store by ID
+ * 
+ * Query params:
+ * - id: Store ID (optional) - returns single store if provided
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
+    // Check if requesting single store
+    const { searchParams } = new URL(request.url);
+    const storeId = searchParams.get('id');
+
+    if (storeId) {
+      // Get single store
+      const store = await Store.findById(storeId).select(
+        "name lat lng dailyCode address qrCodeUrl allowReceiptUploads"
+      );
+
+      if (!store) {
+        return NextResponse.json(
+          { error: "Store not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ store });
+    }
+
+    // Get all active stores
     const stores = await Store.find({ isActive: true }).select(
-      "name lat lng dailyCode address qrCodeUrl"
+      "name lat lng dailyCode address qrCodeUrl allowReceiptUploads"
     );
 
     return NextResponse.json({ stores });

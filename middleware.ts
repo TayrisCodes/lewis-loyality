@@ -1,21 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-
-// Simplified token verification for middleware (Edge Runtime compatible)
-function verifyToken(token: string): { userId: string; role: string } | null {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return {
-      userId: decoded.userId,
-      role: decoded.role,
-    };
-  } catch {
-    return null;
-  }
-}
+// Note: jsonwebtoken is not compatible with Edge Runtime
+// Middleware only checks for cookie presence - actual token verification
+// happens at the API route level (Node.js runtime) where jsonwebtoken works properly
 
 // Routes that require authentication
 const protectedRoutes = ['/dashboard'];
@@ -39,11 +27,12 @@ const publicApiRoutes = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // TEMPORARILY DISABLED FOR DEBUGGING - ALLOW ALL ACCESS
-  console.log(`[Middleware] ${request.method} ${pathname} - ALLOWED (middleware disabled)`);
-  return NextResponse.next();
+  // Customer dashboard routes use localStorage (client-side auth), not cookies
+  // Allow them to pass through - authentication is handled on the client side
+  if (pathname.startsWith('/dashboard/customer')) {
+    return NextResponse.next();
+  }
   
-  /*
   // Check if it's a protected dashboard route
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   
@@ -69,38 +58,19 @@ export function middleware(request: NextRequest) {
 
   // If no token, redirect to login
   if (!token) {
-    const url = new URL('/login', request.url);
-    return NextResponse.redirect(url);
+    console.log('Middleware: No auth token found, redirecting to login');
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Verify the token
-  const payload = verifyToken(token);
+  // In Edge Runtime, jsonwebtoken is not available
+  // We only check for cookie presence here - actual token verification
+  // and role-based access control happens at:
+  // 1. API route level (using requireSuperAdmin/requireAdmin in lib/auth.ts)
+  // 2. Page level (client-side checks via AuthUtils and API calls)
+  // This allows the middleware to work in Edge Runtime while still protecting routes
   
-  // If token is invalid, redirect to login
-  if (!payload) {
-    const url = new URL('/login', request.url);
-    const response = NextResponse.redirect(url);
-    // Clear invalid cookie
-    response.cookies.delete('auth-token');
-    return response;
-  }
-
-  // Check role-based access for specific dashboard routes
-  if (pathname.startsWith('/dashboard/super') && payload.role !== 'superadmin') {
-    // Non-superadmin trying to access super admin dashboard
-    const url = new URL('/login', request.url);
-    return NextResponse.redirect(url);
-  }
-
-  if (pathname.startsWith('/dashboard/admin') && payload.role !== 'admin' && payload.role !== 'superadmin') {
-    // Non-admin trying to access admin dashboard (superadmin can access)
-    const url = new URL('/login', request.url);
-    return NextResponse.redirect(url);
-  }
-
-  // Token is valid, allow access
+  console.log('Middleware: Auth token found, allowing access - verification will happen at API/page level');
   return NextResponse.next();
-  */
 }
 
 // Configure which routes to run middleware on

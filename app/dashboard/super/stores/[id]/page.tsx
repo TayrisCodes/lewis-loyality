@@ -16,6 +16,7 @@ interface Store {
   _id: string;
   name: string;
   address: string;
+  tin?: string;
   adminId?: { name: string; email: string };
   qrToken: string;
   qrExpiresAt: string;
@@ -42,6 +43,7 @@ export default function StoreDetailPage() {
   const [editForm, setEditForm] = useState({
     name: '',
     address: '',
+    tin: '',
     adminId: '',
     isActive: false,
   });
@@ -63,6 +65,7 @@ export default function StoreDetailPage() {
         setEditForm({
           name: storeData.name,
           address: storeData.address,
+          tin: storeData.tin || '',
           adminId: storeData.adminId?._id || 'none',
           isActive: storeData.isActive,
         });
@@ -180,6 +183,16 @@ export default function StoreDetailPage() {
                         <span>{store.address}</span>
                       </div>
                       <div className="flex items-center gap-2">
+                        <span className="font-medium">TIN Number:</span>
+                        {store.tin ? (
+                          <Badge variant="outline" className="font-mono">
+                            {store.tin}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400 text-sm">Not linked</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-gray-500" />
                         <span className="font-medium">Admin:</span>
                         <span>
@@ -221,6 +234,20 @@ export default function StoreDetailPage() {
                           onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                           required
                         />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-tin">TIN Number (Optional)</Label>
+                        <Input
+                          id="edit-tin"
+                          value={editForm.tin}
+                          onChange={(e) => setEditForm({ ...editForm, tin: e.target.value })}
+                          placeholder="Enter TIN number to link store"
+                          pattern="[0-9]{6,20}"
+                          title="TIN should be 6-20 digits"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          If provided, receipts with this TIN will be automatically linked to this store
+                        </p>
                       </div>
                       <div>
                         <Label htmlFor="edit-admin">Assign Admin</Label>

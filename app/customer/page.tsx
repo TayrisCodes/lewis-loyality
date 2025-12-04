@@ -1,26 +1,68 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, QrCode as QrIcon, Scan } from "lucide-react";
+import { ArrowLeft, QrCode as QrIcon, Scan, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ErrorAlert from "@/components/ErrorAlert";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export default function CustomerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [Html5Qrcode, setHtml5Qrcode] = useState<any>(null);
   const [qrCodeScanner, setQrCodeScanner] = useState<any>(null);
+  const [storeSettings, setStoreSettings] = useState<{
+    allowQrScanning: boolean;
+    allowReceiptUploads: boolean;
+  } | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  
+  // Get storeId from URL if present
+  const storeId = searchParams.get('storeId') || searchParams.get('store');
+  const phone = searchParams.get('phone');
 
   useEffect(() => {
     // Dynamically import html5-qrcode only on client side
     import("html5-qrcode").then((module) => {
       setHtml5Qrcode(() => module.Html5Qrcode);
     });
+
+    // Fetch store settings if storeId is provided
+    if (storeId) {
+      fetch(`/api/store?id=${storeId}`)
+        .then(res => res.json())
+        .then(data => {
+          setStoreSettings({
+            allowQrScanning: data.allowQrScanning !== false,
+            allowReceiptUploads: data.allowReceiptUploads !== false
+          });
+          setLoadingSettings(false);
+        })
+        .catch(err => {
+          console.error('Error fetching store settings:', err);
+          // Default to both enabled if we can't fetch settings
+          setStoreSettings({
+            allowQrScanning: true,
+            allowReceiptUploads: true
+          });
+          setLoadingSettings(false);
+        });
+    } else {
+      // No storeId, show both options by default
+      setStoreSettings({
+        allowQrScanning: true,
+        allowReceiptUploads: true
+      });
+      setLoadingSettings(false);
+    }
 
     // Cleanup function to stop camera when component unmounts
     return () => {
@@ -30,7 +72,7 @@ export default function CustomerPage() {
         });
       }
     };
-  }, [qrCodeScanner]);
+  }, [qrCodeScanner, storeId]);
 
   const startScanning = async () => {
     if (!Html5Qrcode) {
@@ -187,24 +229,84 @@ export default function CustomerPage() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {!scanning ? (
+              {loadingSettings ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Loading...</p>
+                </div>
+              ) : !storeSettings?.allowQrScanning && !storeSettings?.allowReceiptUploads ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="text-5xl">🔒</div>
+                  <h3 className="text-xl font-semibold">Check-in Temporarily Unavailable</h3>
+                  <p className="text-muted-foreground">
+                    This store's check-in systems are currently disabled. Please contact store staff for assistance.
+                  </p>
+                </div>
+              ) : !scanning ? (
                 <div className="text-center space-y-4">
-                  <Button
-                    size="lg"
-                    onClick={startScanning}
-                    disabled={loading}
-                    className="w-full bg-brand-green hover:bg-brand-green/90"
-                  >
-                    <Scan className="mr-2 h-5 w-5" />
-                    {loading ? "Starting Camera..." : "Start Camera Scanning"}
-                  </Button>
+                  {storeSettings?.allowQrScanning && (
+                    <>
+                      <Button
+                        size="lg"
+                        onClick={startScanning}
+                        disabled={loading}
+                        className="w-full bg-brand-green hover:bg-brand-green/90"
+                      >
+                        <Scan className="mr-2 h-5 w-5" />
+                        {loading ? "Starting Camera..." : "Start Camera Scanning"}
+                      </Button>
 
-                  <p className="text-sm text-muted-foreground">
-                    Point your camera at the store's QR code
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Make sure to allow camera access when prompted
-                  </p>
+                      <p className="text-sm text-muted-foreground">
+                        Point your camera at the store's QR code
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Make sure to allow camera access when prompted
+                      </p>
+                    </>
+                  )}
+                  
+                  {/* Divider - only show if both are enabled */}
+                  {storeSettings?.allowQrScanning && storeSettings?.allowReceiptUploads && (
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-gray-300 dark:border-gray-600" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
+                          Or
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Alternative: Upload Receipt */}
+                  {storeSettings?.allowReceiptUploads && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => {
+                          const params = new URLSearchParams();
+                          if (storeId) {
+                            params.append('storeId', storeId);
+                          }
+                          if (phone) {
+                            params.append('phone', phone);
+                          }
+                          const queryString = params.toString();
+                          const url = `/customer-receipt${queryString ? `?${queryString}` : ''}`;
+                          router.push(url);
+                        }}
+                        className="w-full border-2 border-brand-coral text-brand-coral hover:bg-brand-coral hover:text-white"
+                      >
+                        <Receipt className="mr-2 h-5 w-5" />
+                        Upload Receipt Instead
+                      </Button>
+                      
+                      <p className="text-xs text-center text-muted-foreground">
+                        Take a photo of your receipt for instant verification
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">

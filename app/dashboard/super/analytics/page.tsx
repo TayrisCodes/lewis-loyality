@@ -18,8 +18,32 @@ interface Analytics {
   visitsLast7Days: number;
   visitsLast30Days: number;
   rewardsGiven: number;
+  totalRewards?: number;
+  usedRewards?: number;
+  rewardsUsedLast7Days?: number;
+  rewardsUsedLast30Days?: number;
   dailyVisits: Array<{ date: string; visits: number }>;
+  dailyRewardUsage?: Array<{ date: string; rewards: number }>;
   topStores: Array<{ name: string; visitCount: number }>;
+  rewardsUsedByStore?: Array<{
+    storeId: string;
+    storeName: string;
+    rewardCount: number;
+  }>;
+  rewardsUsedByAdmin?: Array<{
+    adminId: string;
+    adminName: string;
+    adminEmail: string;
+    rewardCount: number;
+    storeCount: number;
+  }>;
+  rewardsCreatedByStore?: Array<{
+    storeId: string;
+    storeName: string;
+    totalRewards: number;
+    usedRewards: number;
+    claimedRewards: number;
+  }>;
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B6B', '#4ECDC4', '#45B7D1'];
@@ -199,9 +223,9 @@ export default function SuperAdminAnalyticsPage() {
                 <Gift className="h-5 w-5 text-pink-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-gray-900 dark:text-white">{analytics?.rewardsGiven || 0}</div>
+                <div className="text-3xl font-bold text-gray-900 dark:text-white">{analytics?.totalRewards || analytics?.rewardsGiven || 0}</div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {rewardRate}% reward rate
+                  {analytics?.usedRewards || 0} used ({rewardRate}% reward rate)
                 </p>
               </CardContent>
             </Card>
@@ -361,11 +385,229 @@ export default function SuperAdminAnalyticsPage() {
             </Card>
           </motion.div>
 
-          {/* System Overview */}
+          {/* Reward Tracking Analytics */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
+            className="space-y-6"
+          >
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Reward Tracking Analytics</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Track where customers got discounts and which admins processed them</p>
+            </div>
+
+            {/* Reward Usage Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="dark:bg-gray-800">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Rewards Used</CardTitle>
+                  <Gift className="h-5 w-5 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white">{analytics?.usedRewards || 0}</div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {analytics?.totalRewards ? Math.round(((analytics.usedRewards || 0) / analytics.totalRewards) * 100) : 0}% usage rate
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="dark:bg-gray-800">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Used (Last 7 Days)</CardTitle>
+                  <Activity className="h-5 w-5 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white">{analytics?.rewardsUsedLast7Days || 0}</div>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Recent redemptions</p>
+                </CardContent>
+              </Card>
+
+              <Card className="dark:bg-gray-800">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Used (Last 30 Days)</CardTitle>
+                  <Calendar className="h-5 w-5 text-indigo-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white">{analytics?.rewardsUsedLast30Days || 0}</div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Monthly redemptions</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Daily Reward Usage Chart */}
+            {analytics?.dailyRewardUsage && analytics.dailyRewardUsage.length > 0 && (
+              <Card className="dark:bg-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-gray-900 dark:text-white">Daily Reward Usage Trend (Last 7 Days)</CardTitle>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Track daily reward redemptions</p>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={analytics.dailyRewardUsage}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#9CA3AF"
+                        style={{ fontSize: '12px' }}
+                      />
+                      <YAxis 
+                        stroke="#9CA3AF"
+                        style={{ fontSize: '12px' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#1F2937', 
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: '#fff'
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="rewards" 
+                        stroke="#10B981" 
+                        strokeWidth={3}
+                        dot={{ fill: '#10B981', r: 5 }}
+                        activeDot={{ r: 7 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Rewards Used By Store and Admin - Side by Side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Stores Where Rewards Were Used */}
+              <Card className="dark:bg-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-gray-900 dark:text-white">Rewards Used By Store</CardTitle>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Where customers redeemed their discounts</p>
+                </CardHeader>
+                <CardContent>
+                  {analytics?.rewardsUsedByStore && analytics.rewardsUsedByStore.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-gray-900 dark:text-gray-300">Store</TableHead>
+                          <TableHead className="text-gray-900 dark:text-gray-300 text-right">Rewards Used</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {analytics.rewardsUsedByStore.map((store, index) => (
+                          <TableRow key={store.storeId}>
+                            <TableCell className="font-medium text-gray-900 dark:text-white">
+                              {store.storeName}
+                            </TableCell>
+                            <TableCell className="text-right text-gray-700 dark:text-gray-300">
+                              {store.rewardCount}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      No reward usage data available
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Admins Who Scanned Rewards */}
+              <Card className="dark:bg-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-gray-900 dark:text-white">Top Reward Scanners</CardTitle>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Admins who processed the most rewards</p>
+                </CardHeader>
+                <CardContent>
+                  {analytics?.rewardsUsedByAdmin && analytics.rewardsUsedByAdmin.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-gray-900 dark:text-gray-300">Admin</TableHead>
+                          <TableHead className="text-gray-900 dark:text-gray-300 text-right">Scanned</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {analytics.rewardsUsedByAdmin.map((admin, index) => (
+                          <TableRow key={admin.adminId}>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium text-gray-900 dark:text-white">{admin.adminName}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">{admin.adminEmail}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {admin.storeCount} store(s)
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right text-gray-700 dark:text-gray-300">
+                              {admin.rewardCount}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      No admin scanning data available
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Rewards Created By Store */}
+            <Card className="dark:bg-gray-800">
+              <CardHeader>
+                <CardTitle className="text-gray-900 dark:text-white">Rewards Created By Store</CardTitle>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Where customers earned their rewards</p>
+              </CardHeader>
+              <CardContent>
+                {analytics?.rewardsCreatedByStore && analytics.rewardsCreatedByStore.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-gray-900 dark:text-gray-300">Store</TableHead>
+                        <TableHead className="text-gray-900 dark:text-gray-300 text-right">Total</TableHead>
+                        <TableHead className="text-gray-900 dark:text-gray-300 text-right">Used</TableHead>
+                        <TableHead className="text-gray-900 dark:text-gray-300 text-right">Claimed</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {analytics.rewardsCreatedByStore.map((store, index) => (
+                        <TableRow key={store.storeId}>
+                          <TableCell className="font-medium text-gray-900 dark:text-white">
+                            {store.storeName}
+                          </TableCell>
+                          <TableCell className="text-right text-gray-700 dark:text-gray-300">
+                            {store.totalRewards}
+                          </TableCell>
+                          <TableCell className="text-right text-green-600 dark:text-green-400">
+                            {store.usedRewards}
+                          </TableCell>
+                          <TableCell className="text-right text-yellow-600 dark:text-yellow-400">
+                            {store.claimedRewards}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    No reward creation data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* System Overview */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
           >
             <Card className="dark:bg-gray-800">
               <CardHeader>

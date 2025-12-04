@@ -23,7 +23,14 @@ import {
   RefreshCw,
   Award,
   Target,
-  BarChart3
+  BarChart3,
+  Receipt as ReceiptIcon,
+  CheckCircle2,
+  XCircle,
+  Flag,
+  AlertCircle,
+  Eye,
+  FileText
 } from 'lucide-react';
 import ApiClient, { AuthUtils } from '@/lib/api-client';
 
@@ -61,6 +68,26 @@ interface CustomerDetail {
     name: string;
     address: string;
   };
+  receipts?: Array<{
+    _id: string;
+    imageUrl: string;
+    status: string;
+    reason?: string;
+    flags?: string[];
+    tin?: string;
+    invoiceNo?: string;
+    dateOnReceipt?: string;
+    totalAmount?: number;
+    branchText?: string;
+    ocrText?: string;
+    storeId?: {
+      _id: string;
+      name: string;
+      address?: string;
+    } | null;
+    createdAt: string;
+    processedAt?: string;
+  }>;
 }
 
 export default function AdminCustomerDetailPage() {
@@ -128,6 +155,23 @@ export default function AdminCustomerDetailPage() {
     if (diffInDays < 7) return `${diffInDays} days ago`;
     if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
     return `${Math.floor(diffInDays / 30)} months ago`;
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>;
+      case 'rejected':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+      case 'flagged':
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"><Flag className="h-3 w-3 mr-1" />Flagged</Badge>;
+      case 'pending':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case 'needs_store_selection':
+        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200"><AlertCircle className="h-3 w-3 mr-1" />Needs Store Selection</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
   };
 
   if (loading) {
@@ -449,6 +493,124 @@ export default function AdminCustomerDetailPage() {
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* Receipts Section */}
+          {customer.receipts && customer.receipts.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ReceiptIcon className="h-5 w-5" />
+                    Receipts Uploaded at {customer.storeInfo.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {customer.receipts.map((receipt) => (
+                      <div
+                        key={receipt._id}
+                        className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            {getStatusBadge(receipt.status)}
+                            {receipt.storeId && (
+                              <div className="flex items-center gap-1 text-sm text-gray-600">
+                                <Store className="h-4 w-4" />
+                                <span>{receipt.storeId.name}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {formatDate(receipt.createdAt)}
+                          </div>
+                        </div>
+
+                        {/* Extracted Data */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                          {receipt.totalAmount && (
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Amount</div>
+                              <div className="font-medium">{receipt.totalAmount} ETB</div>
+                            </div>
+                          )}
+                          {receipt.invoiceNo && (
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Invoice No</div>
+                              <div className="font-medium font-mono text-sm">{receipt.invoiceNo}</div>
+                            </div>
+                          )}
+                          {receipt.dateOnReceipt && (
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Receipt Date</div>
+                              <div className="font-medium">{receipt.dateOnReceipt}</div>
+                            </div>
+                          )}
+                          {receipt.tin && (
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">TIN</div>
+                              <div className="font-medium font-mono text-sm">{receipt.tin}</div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Additional Info */}
+                        {(receipt.branchText || receipt.reason || receipt.flags?.length) && (
+                          <div className="space-y-2 mb-3">
+                            {receipt.branchText && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">Branch: </span>
+                                <span className="font-medium">{receipt.branchText}</span>
+                              </div>
+                            )}
+                            {receipt.reason && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">Reason: </span>
+                                <span className={receipt.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>
+                                  {receipt.reason}
+                                </span>
+                              </div>
+                            )}
+                            {receipt.flags && receipt.flags.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {receipt.flags.map((flag, index) => (
+                                  <Badge key={index} variant="outline" className="text-xs">
+                                    <AlertCircle className="h-3 w-3 mr-1" />
+                                    {flag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(receipt.imageUrl, '_blank')}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Receipt Image
+                          </Button>
+                          {receipt.processedAt && (
+                            <div className="text-xs text-gray-500 ml-auto">
+                              Processed: {formatDate(receipt.processedAt)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>

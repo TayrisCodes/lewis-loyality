@@ -29,12 +29,17 @@ export async function POST(request: NextRequest) {
     await dbConnect();
     await requireSuperAdmin([PERMISSIONS.CREATE_STORE]);
 
-    const { name, address, adminId } = await request.json();
+    const { name, address, adminId, tin } = await request.json();
     
     // Remove adminId if it's empty string to prevent database errors
     const storeData: any = { name, address };
     if (adminId && adminId.trim() !== '') {
       storeData.adminId = adminId;
+    }
+    
+    // Add TIN if provided (optional field - links store to TIN)
+    if (tin && tin.trim() !== '') {
+      storeData.tin = tin.trim();
     }
 
     if (!name || !address) {

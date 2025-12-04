@@ -5,6 +5,10 @@ export interface IVisit extends Document {
   storeId: mongoose.Types.ObjectId;
   timestamp: Date;
   rewardEarned: boolean;
+  
+  // Receipt verification fields
+  receiptId?: mongoose.Types.ObjectId;  // Reference to Receipt if visit was via receipt
+  visitMethod: 'qr' | 'receipt';  // How the visit was recorded
 }
 
 const VisitSchema = new Schema({
@@ -27,11 +31,26 @@ const VisitSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  
+  // Receipt verification fields
+  receiptId: {
+    type: Schema.Types.ObjectId,
+    ref: "Receipt",
+    required: false,
+  },
+  visitMethod: {
+    type: String,
+    enum: ['qr', 'receipt'],
+    default: 'qr',
+    required: true,
+  },
 });
 
 // Indexes
 VisitSchema.index({ customerId: 1, timestamp: -1 });
 VisitSchema.index({ storeId: 1, timestamp: -1 });
+VisitSchema.index({ receiptId: 1 });  // Index for receipt-based visits
+VisitSchema.index({ visitMethod: 1, timestamp: -1 });  // Index for filtering by method
 
 const Visit: Model<IVisit> =
   mongoose.models.Visit || mongoose.model<IVisit>("Visit", VisitSchema);

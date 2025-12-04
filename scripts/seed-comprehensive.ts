@@ -157,6 +157,13 @@ async function seedComprehensive() {
         lat: data.lat,
         lng: data.lng,
         isActive: index < 13, // Last 2 stores inactive for testing
+        
+        // Receipt verification settings (Phase 1)
+        tin: '0003169685', // Lewis Retail Company TIN
+        branchName: data.name.split(' - ')[1] || data.city, // Extract branch name (e.g., "Bole")
+        minReceiptAmount: 500, // Minimum 500 ETB
+        receiptValidityHours: 24, // Receipts valid for 24 hours
+        allowReceiptUploads: true, // Enable receipt uploads
       });
 
       const storeId = (store._id as mongoose.Types.ObjectId).toString();

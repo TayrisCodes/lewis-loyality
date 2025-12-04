@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { motion } from 'framer-motion';
-import { Users, Plus, UserCheck, UserX, Calendar } from 'lucide-react';
+import { Users, Plus, UserCheck, UserX, Calendar, Edit, Trash2, Key, Loader2 } from 'lucide-react';
+import { ToastNotification, useToast } from '@/components/ui/toast-notification';
 
 interface Admin {
   _id: string;
@@ -35,8 +36,16 @@ export default function SuperAdminAdminsPage() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast, success, error: showError, hideToast } = useToast();
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
+  const [editAdminOpen, setEditAdminOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
   const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '', storeId: '' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', storeId: '', isActive: true });
+  const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirmPassword: '' });
+  const [processing, setProcessing] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -70,7 +79,7 @@ export default function SuperAdminAdminsPage() {
     
     // Validate that a store is selected
     if (!adminForm.storeId) {
-      alert('Please select a store for the admin');
+      showError('Please select a store for the admin');
       return;
     }
     
@@ -85,14 +94,137 @@ export default function SuperAdminAdminsPage() {
         setCreateAdminOpen(false);
         setAdminForm({ name: '', email: '', password: '', storeId: '' });
         fetchData();
+        success('Admin created successfully!');
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to create admin');
+        showError(data.error || 'Failed to create admin');
       }
     } catch (error) {
       console.error('Error creating admin:', error);
-      alert('Failed to create admin');
+      showError('Failed to create admin');
     }
+  };
+
+  const handleEditAdmin = (admin: Admin) => {
+    setSelectedAdmin(admin);
+    // Extract storeId - it might be an object with _id or a string
+    const storeId = admin.storeId 
+      ? (typeof admin.storeId === 'object' && '_id' in admin.storeId 
+          ? (admin.storeId as any)._id 
+          : (admin.storeId as any))
+      : '';
+    setEditForm({
+      name: admin.name,
+      email: admin.email,
+      storeId: storeId,
+      isActive: admin.isActive
+    });
+    setEditAdminOpen(true);
+  };
+
+  const handleUpdateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAdmin) return;
+
+    setProcessing('update');
+    try {
+      const response = await fetch(`/api/super/admins/${selectedAdmin._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+
+      if (response.ok) {
+        setEditAdminOpen(false);
+        setSelectedAdmin(null);
+        fetchData();
+        success('Admin updated successfully!');
+      } else {
+        const data = await response.json();
+        showError(data.error || 'Failed to update admin');
+      }
+    } catch (error) {
+      console.error('Error updating admin:', error);
+      showError('Failed to update admin');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAdmin) return;
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showError('Passwords do not match');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      showError('Password must be at least 6 characters long');
+      return;
+    }
+
+    setProcessing('password');
+    try {
+      const response = await fetch(`/api/super/admins/${selectedAdmin._id}/change-password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: passwordForm.newPassword }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setChangePasswordOpen(false);
+        setSelectedAdmin(null);
+        setPasswordForm({ newPassword: '', confirmPassword: '' });
+        success('Password changed successfully!');
+      } else {
+        showError(data.error || 'Failed to change password');
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      showError('Failed to change password');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleDeleteAdmin = async () => {
+    if (!selectedAdmin) return;
+
+    setProcessing('delete');
+    try {
+      const response = await fetch(`/api/super/admins/${selectedAdmin._id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setDeleteConfirmOpen(false);
+        setSelectedAdmin(null);
+        fetchData();
+        success('Admin deleted successfully!');
+      } else {
+        const data = await response.json();
+        showError(data.error || 'Failed to delete admin');
+      }
+    } catch (error) {
+      console.error('Error deleting admin:', error);
+      showError('Failed to delete admin');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const openDeleteConfirm = (admin: Admin) => {
+    setSelectedAdmin(admin);
+    setDeleteConfirmOpen(true);
+  };
+
+  const openChangePassword = (admin: Admin) => {
+    setSelectedAdmin(admin);
+    setPasswordForm({ newPassword: '', confirmPassword: '' });
+    setChangePasswordOpen(true);
   };
 
   if (loading) {
@@ -131,6 +263,9 @@ export default function SuperAdminAdminsPage() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New Admin</DialogTitle>
+                  <DialogDescription>
+                    Create a new admin user and assign them to a store. The admin will be able to manage their assigned store.
+                  </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateAdmin} className="space-y-4">
                   <div>
@@ -251,6 +386,7 @@ export default function SuperAdminAdminsPage() {
                       <TableHead>Status</TableHead>
                       <TableHead>Last Login</TableHead>
                       <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -286,6 +422,39 @@ export default function SuperAdminAdminsPage() {
                         <TableCell>
                           {new Date(admin.createdAt).toLocaleDateString()}
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditAdmin(admin)}
+                              disabled={processing !== null}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openChangePassword(admin)}
+                              disabled={processing !== null}
+                            >
+                              <Key className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openDeleteConfirm(admin)}
+                              disabled={processing !== null}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              {processing === 'delete' && selectedAdmin?._id === admin._id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -295,6 +464,191 @@ export default function SuperAdminAdminsPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Edit Admin Dialog */}
+      <Dialog open={editAdminOpen} onOpenChange={setEditAdminOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Admin</DialogTitle>
+            <DialogDescription>
+              Update admin information and store assignment. Changes will take effect immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateAdmin} className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-store">Assign Store</Label>
+              <Select 
+                value={editForm.storeId} 
+                onValueChange={(value) => setEditForm({ ...editForm, storeId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a store (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Unassigned</SelectItem>
+                  {stores.filter(store => store.isActive).map((store) => {
+                    const currentStoreId = selectedAdmin?.storeId 
+                      ? (typeof selectedAdmin.storeId === 'object' && '_id' in selectedAdmin.storeId 
+                          ? (selectedAdmin.storeId as any)._id?.toString()
+                          : (selectedAdmin.storeId as any)?.toString())
+                      : '';
+                    const hasOtherAdmin = store.adminId && 
+                      (typeof store.adminId === 'object' && '_id' in store.adminId
+                        ? (store.adminId as any)._id?.toString() !== currentStoreId
+                        : (store.adminId as any)?.toString() !== currentStoreId);
+                    
+                    return (
+                      <SelectItem 
+                        key={store._id} 
+                        value={store._id}
+                        disabled={hasOtherAdmin}
+                      >
+                        {store.name} - {store.address}
+                        {hasOtherAdmin && ' (Has Admin)'}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="edit-active"
+                checked={editForm.isActive}
+                onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
+                className="rounded"
+              />
+              <Label htmlFor="edit-active">Active</Label>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={processing === 'update'} className="flex-1">
+                {processing === 'update' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Admin'
+                )}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setEditAdminOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password for {selectedAdmin?.name}</DialogTitle>
+            <DialogDescription>
+              Enter a new password for this admin user. The password must be at least 6 characters long.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div>
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                required
+                minLength={6}
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                required
+                minLength={6}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={processing === 'password'} className="flex-1">
+                {processing === 'password' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Changing...
+                  </>
+                ) : (
+                  'Change Password'
+                )}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setChangePasswordOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Admin</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. The admin will be permanently removed from the system.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Are you sure you want to delete <strong>{selectedAdmin?.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAdmin}
+                disabled={processing === 'delete'}
+                className="flex-1"
+              >
+                {processing === 'delete' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Admin'
+                )}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Toast Notification */}
+      <ToastNotification toast={toast} onClose={hideToast} />
     </div>
   );
 }

@@ -5,18 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { motion } from 'framer-motion';
-import { Store, Plus, RefreshCw, Eye, Edit, Trash2 } from 'lucide-react';
+import { Store, Plus, RefreshCw, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
+import { ToastNotification, useToast } from '@/components/ui/toast-notification';
 
 interface Store {
   _id: string;
   name: string;
   address: string;
+  tin?: string;
   adminId?: { name: string; email: string };
   qrToken: string;
   qrExpiresAt: string;
@@ -37,7 +39,11 @@ export default function SuperAdminStoresPage() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
   const [createStoreOpen, setCreateStoreOpen] = useState(false);
-  const [storeForm, setStoreForm] = useState({ name: '', address: '' });
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [storeForm, setStoreForm] = useState({ name: '', address: '', tin: '' });
+  const [processing, setProcessing] = useState<string | null>(null);
+  const { toast, success, error: showError, hideToast } = useToast();
 
   useEffect(() => {
     fetchData();
@@ -77,16 +83,48 @@ export default function SuperAdminStoresPage() {
 
       if (response.ok) {
         setCreateStoreOpen(false);
-        setStoreForm({ name: '', address: '' });
+        setStoreForm({ name: '', address: '', tin: '' });
         fetchData();
+        success('Store created successfully!');
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to create store');
+        showError(data.error || 'Failed to create store');
       }
     } catch (error) {
       console.error('Error creating store:', error);
-      alert('Failed to create store');
+      showError('Failed to create store');
     }
+  };
+
+  const handleDeleteStore = async () => {
+    if (!selectedStore) return;
+
+    setProcessing('delete');
+    try {
+      const response = await fetch(`/api/super/stores/${selectedStore._id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setDeleteConfirmOpen(false);
+        setSelectedStore(null);
+        fetchData();
+        success('Store deleted successfully!');
+      } else {
+        const data = await response.json();
+        showError(data.error || 'Failed to delete store');
+      }
+    } catch (error) {
+      console.error('Error deleting store:', error);
+      showError('Failed to delete store');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const openDeleteConfirm = (store: Store) => {
+    setSelectedStore(store);
+    setDeleteConfirmOpen(true);
   };
 
   const handleRegenerateQR = async (storeId: string) => {
@@ -97,9 +135,14 @@ export default function SuperAdminStoresPage() {
 
       if (response.ok) {
         fetchData();
+        success('QR code regenerated successfully!');
+      } else {
+        const data = await response.json();
+        showError(data.error || 'Failed to regenerate QR code');
       }
     } catch (error) {
       console.error('Error regenerating QR:', error);
+      showError('Failed to regenerate QR code');
     }
   };
 
@@ -108,7 +151,7 @@ export default function SuperAdminStoresPage() {
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar role="superadmin" />
         <div className="flex-1 lg:ml-64 flex items-center justify-center">
-          <div className="text-center">Loading...</div>
+          <Loader2 className="w-8 h-8 animate-spin text-brand-coral" />
         </div>
       </div>
     );
@@ -139,6 +182,9 @@ export default function SuperAdminStoresPage() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New Store</DialogTitle>
+                  <DialogDescription>
+                    Create a new store location. You can optionally link it with a TIN number for automatic receipt linking.
+                  </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateStore} className="space-y-4">
                   <div>
@@ -158,6 +204,20 @@ export default function SuperAdminStoresPage() {
                       onChange={(e) => setStoreForm({ ...storeForm, address: e.target.value })}
                       required
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="store-tin">TIN Number (Optional)</Label>
+                    <Input
+                      id="store-tin"
+                      value={storeForm.tin}
+                      onChange={(e) => setStoreForm({ ...storeForm, tin: e.target.value })}
+                      placeholder="Enter TIN number to link store"
+                      pattern="[0-9]{6,20}"
+                      title="TIN should be 6-20 digits"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      If provided, receipts with this TIN will be automatically linked to this store
+                    </p>
                   </div>
                   <Button type="submit" className="w-full">Create Store</Button>
                 </form>
@@ -219,6 +279,7 @@ export default function SuperAdminStoresPage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Address</TableHead>
+                      <TableHead>TIN Number</TableHead>
                       <TableHead>Admin</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>QR Expires</TableHead>
@@ -231,6 +292,15 @@ export default function SuperAdminStoresPage() {
                       <TableRow key={store._id}>
                         <TableCell className="font-medium">{store.name}</TableCell>
                         <TableCell>{store.address}</TableCell>
+                        <TableCell>
+                          {store.tin ? (
+                            <Badge variant="outline" className="font-mono">
+                              {store.tin}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400 text-sm">Not linked</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {store.adminId ? (
                             <div>
@@ -268,6 +338,19 @@ export default function SuperAdminStoresPage() {
                             >
                               <RefreshCw className="w-4 h-4" />
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openDeleteConfirm(store)}
+                              disabled={processing !== null}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              {processing === 'delete' && selectedStore?._id === store._id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -279,6 +362,51 @@ export default function SuperAdminStoresPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Store</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. The store will be permanently removed from the system.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Are you sure you want to delete <strong>{selectedStore?.name}</strong>? This action cannot be undone.
+              {selectedStore?.adminId && (
+                <span className="block mt-2 text-amber-600">
+                  Warning: This store has an assigned admin. The admin will be unassigned.
+                </span>
+              )}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                onClick={handleDeleteStore}
+                disabled={processing === 'delete'}
+                className="flex-1"
+              >
+                {processing === 'delete' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Store'
+                )}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Toast Notification */}
+      <ToastNotification toast={toast} onClose={hideToast} />
     </div>
   );
 }

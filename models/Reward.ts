@@ -7,8 +7,17 @@ export interface IReward extends Document {
   rewardType: string;
   issuedAt: Date;
   expiresAt: Date;
-  status: "unused" | "used";
+  status: "pending" | "claimed" | "redeemed" | "used" | "expired";
+  claimedAt?: Date;
+  redeemedAt?: Date;
   usedAt?: Date;
+  qrCode?: string; // QR code for discount
+  discountPercent?: number; // Discount percentage (e.g., 10)
+  discountCode?: string; // Unique discount code
+  
+  // Tracking fields for reward usage
+  usedByAdminId?: mongoose.Types.ObjectId; // Admin who scanned/redeemed the reward
+  usedAtStoreId?: mongoose.Types.ObjectId; // Store where reward was used (may differ from storeId where reward was created)
 }
 
 const RewardSchema = new Schema({
@@ -41,14 +50,37 @@ const RewardSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ["unused", "used"],
-    default: "unused",
+    enum: ["pending", "claimed", "redeemed", "used", "expired"],
+    default: "pending",
   },
+  claimedAt: Date,
+  redeemedAt: Date,
   usedAt: Date,
+  qrCode: String, // QR code data for discount
+  discountPercent: {
+    type: Number,
+    default: 10, // 10% discount
+  },
+  discountCode: String, // Unique discount code for redemption
+  
+  // Tracking fields for reward usage
+  usedByAdminId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: false,
+  },
+  usedAtStoreId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Store',
+    required: false,
+  },
 });
 
-// Indexes - Remove duplicate code index since it's already unique
+// Indexes
 RewardSchema.index({ customerId: 1 });
+RewardSchema.index({ storeId: 1 }); // Index for store-specific rewards
+RewardSchema.index({ usedByAdminId: 1, usedAt: -1 }); // Index for admin reward history
+RewardSchema.index({ usedAtStoreId: 1, usedAt: -1 }); // Index for store reward usage tracking
 
 const Reward: Model<IReward> =
   mongoose.models.Reward || mongoose.model<IReward>("Reward", RewardSchema);

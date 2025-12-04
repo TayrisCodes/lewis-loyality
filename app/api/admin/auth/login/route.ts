@@ -42,16 +42,12 @@ export async function POST(request: NextRequest) {
       storeId: user.storeId?.toString(),
     });
 
-    const cookieStore = await cookies();
-    cookieStore.set('auth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 24 * 60 * 60, // 24 hours
-    });
-
-    return NextResponse.json({
+    // Check if request is over HTTPS to determine secure flag
+    // In production behind proxy, check if connection is secure
+    const isSecure = request.url.startsWith('https://') || process.env.NODE_ENV !== 'production';
+    
+    // Create response with JSON data
+    const response = NextResponse.json({
       message: 'Login successful',
       token: token,
       user: {
@@ -62,6 +58,17 @@ export async function POST(request: NextRequest) {
         storeId: user.storeId,
       },
     });
+
+    // Set cookie on the response
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: isSecure, // Only require HTTPS if URL is actually HTTPS
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 24 * 60 * 60, // 24 hours
+    });
+
+    return response;
   } catch (error) {
     console.error('Admin login error:', error);
     return NextResponse.json(

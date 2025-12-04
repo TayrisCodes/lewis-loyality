@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { motion } from 'framer-motion';
-import { Users, TrendingUp, Gift, RefreshCw, Printer, QrCode, Calendar, UserCheck } from 'lucide-react';
+import { Users, TrendingUp, Gift, RefreshCw, Printer, QrCode as QrCodeIcon, Calendar, UserCheck, Receipt } from 'lucide-react';
 import ApiClient, { AuthUtils } from '@/lib/api-client';
 
 interface Store {
@@ -25,6 +25,8 @@ interface Visit {
   customerId: { name: string; phone: string };
   timestamp: string;
   rewardEarned: boolean;
+  visitMethod?: 'qr' | 'receipt';  // NEW: Visit method tracking
+  receiptId?: any;                 // NEW: Receipt details
 }
 
 interface Customer {
@@ -105,6 +107,20 @@ export default function AdminDashboard() {
 
   const totalCustomers = customers.length;
   const rewardsIssued = visits.filter(visit => visit.rewardEarned).length;
+  
+  // NEW: Receipt vs QR visit metrics
+  const totalQrVisits = visits.filter(v => v.visitMethod === 'qr' || !v.visitMethod).length;
+  const totalReceiptVisits = visits.filter(v => v.visitMethod === 'receipt').length;
+  const todayQrVisits = visits.filter(v => {
+    const visitDate = new Date(v.timestamp).toDateString();
+    const today = new Date().toDateString();
+    return visitDate === today && (v.visitMethod === 'qr' || !v.visitMethod);
+  }).length;
+  const todayReceiptVisits = visits.filter(v => {
+    const visitDate = new Date(v.timestamp).toDateString();
+    const today = new Date().toDateString();
+    return visitDate === today && v.visitMethod === 'receipt';
+  }).length;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -173,6 +189,60 @@ export default function AdminDashboard() {
             </Card>
           </motion.div>
 
+          {/* Receipt System Statistics */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+          >
+            <Card className="bg-gradient-to-r from-brand-coral/10 to-orange-50 border-brand-coral/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-brand-coral">
+                  <Receipt className="w-5 h-5" />
+                  Receipt Verification System
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Total QR Visits</p>
+                    <div className="flex items-center gap-2">
+                      <QrCodeIcon className="h-4 w-4 text-blue-600" />
+                      <span className="text-2xl font-bold">{totalQrVisits}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Today: {todayQrVisits}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Total Receipt Visits</p>
+                    <div className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4 text-brand-coral" />
+                      <span className="text-2xl font-bold">{totalReceiptVisits}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Today: {todayReceiptVisits}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Receipt Adoption</p>
+                    <div className="text-2xl font-bold text-brand-coral">
+                      {visits.length > 0 ? Math.round((totalReceiptVisits / visits.length) * 100) : 0}%
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">of all visits</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Quick Action</p>
+                    <Button
+                      onClick={() => router.push('/dashboard/admin/receipts')}
+                      className="bg-brand-coral hover:bg-brand-coral/90"
+                      size="sm"
+                    >
+                      <Receipt className="w-4 h-4 mr-1" />
+                      View Receipts
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
       {/* QR Code Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -182,7 +252,7 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <QrCode className="w-5 h-5" />
+              <QrCodeIcon className="w-5 h-5" />
               Current Daily QR Code
             </CardTitle>
           </CardHeader>

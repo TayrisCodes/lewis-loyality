@@ -24,7 +24,9 @@ import {
   Mail,
   TrendingUp,
   RefreshCw,
-  Store
+  Store,
+  QrCode,
+  Receipt
 } from 'lucide-react';
 import ApiClient, { AuthUtils } from '@/lib/api-client';
 
@@ -34,6 +36,8 @@ interface Customer {
   phone: string;
   email?: string;
   totalVisits: number;
+  qrVisits?: number;           // NEW: QR-based visits
+  receiptVisits?: number;      // NEW: Receipt-based visits
   totalRewards: number;
   lastVisit?: string;
   registeredAt: string;
@@ -443,9 +447,23 @@ export default function AdminCustomersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-center">
-                            <div className="font-medium">{customer.totalVisits}</div>
+                            <div className="font-medium mb-1">{customer.totalVisits}</div>
+                            <div className="flex items-center justify-center gap-2 text-xs">
+                              {customer.qrVisits !== undefined && customer.qrVisits > 0 && (
+                                <Badge variant="outline" className="text-xs py-0">
+                                  <QrCode className="h-3 w-3 mr-1" />
+                                  {customer.qrVisits}
+                                </Badge>
+                              )}
+                              {customer.receiptVisits !== undefined && customer.receiptVisits > 0 && (
+                                <Badge variant="outline" className="text-xs py-0 border-brand-coral text-brand-coral">
+                                  <Receipt className="h-3 w-3 mr-1" />
+                                  {customer.receiptVisits}
+                                </Badge>
+                              )}
+                            </div>
                             {customer.averageVisitFrequency && (
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-gray-500 mt-1">
                                 {customer.averageVisitFrequency.toFixed(1)}/week
                               </div>
                             )}

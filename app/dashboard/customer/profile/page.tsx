@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Phone, Calendar, TrendingUp, ArrowLeft, LogOut } from 'lucide-react';
+import { User, ArrowLeft, LogOut, Gift } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface CustomerProfile {
   name: string;
@@ -17,10 +15,11 @@ interface CustomerProfile {
 }
 
 export default function CustomerProfilePage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -35,6 +34,26 @@ export default function CustomerProfilePage() {
     }
 
     try {
+      // Try to fetch from API first
+      try {
+        const response = await fetch(`/api/customer/${phone}/profile`);
+        if (response.ok) {
+          const data = await response.json();
+          setProfile({
+            name: data.name || localStorage.getItem('customerName') || 'Customer',
+            phone: data.phone || phone,
+            totalVisits: data.totalVisits || parseInt(localStorage.getItem('totalVisits') || '0'),
+            lastVisit: data.lastVisit || localStorage.getItem('lastVisit') || new Date().toISOString(),
+            memberSince: data.memberSince || data.createdAt || localStorage.getItem('memberSince') || new Date().toISOString(),
+          });
+          setEditedName(data.name || localStorage.getItem('customerName') || 'Customer');
+          return;
+        }
+      } catch (err) {
+        console.log('API fetch failed, using localStorage');
+      }
+
+      // Fallback to localStorage
       const profileData: CustomerProfile = {
         name: localStorage.getItem('customerName') || localStorage.getItem('customer_name') || 'Customer',
         phone,
@@ -52,31 +71,57 @@ export default function CustomerProfilePage() {
     }
   };
 
-  const handleSaveName = () => {
-    if (editedName.trim()) {
+  const handleSaveChanges = async () => {
+    if (!editedName.trim() || !profile) return;
+    
+    setSaving(true);
+    try {
+      // Update localStorage
       localStorage.setItem('customerName', editedName.trim());
+      
+      // Optionally update via API if endpoint exists
+      try {
+        await fetch('/api/customer/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: profile.phone,
+            name: editedName.trim(),
+          }),
+        });
+      } catch (err) {
+        console.log('API update failed, using localStorage only');
+      }
+      
       setProfile(prev => prev ? { ...prev, name: editedName.trim() } : null);
-      setEditing(false);
+      alert('Changes saved successfully!');
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      alert('Failed to save changes. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('customerPhone');
-    localStorage.removeItem('customer_phone');
-    localStorage.removeItem('customerName');
-    localStorage.removeItem('customer_name');
-    localStorage.removeItem('totalVisits');
-    localStorage.removeItem('lastVisit');
-    localStorage.removeItem('memberSince');
-    window.location.href = '/customer-auth';
+    if (confirm('Are you sure you want to sign out?')) {
+      localStorage.removeItem('customerPhone');
+      localStorage.removeItem('customer_phone');
+      localStorage.removeItem('customerName');
+      localStorage.removeItem('customer_name');
+      localStorage.removeItem('totalVisits');
+      localStorage.removeItem('lastVisit');
+      localStorage.removeItem('memberSince');
+      window.location.href = '/customer-auth';
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="flex justify-center items-center h-screen bg-gray-50" style={{ backgroundColor: '#F4F4F4' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
+          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
         </div>
       </div>
     );
@@ -84,208 +129,166 @@ export default function CustomerProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <h2 className="text-xl font-semibold mb-4">No profile data found</h2>
-            <Button onClick={() => window.location.href = '/customer-auth'}>
-              Sign In
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50" style={{ backgroundColor: '#F4F4F4' }}>
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-4">No profile data found</h2>
+          <Button onClick={() => window.location.href = '/customer-auth'}>
+            Sign In
+          </Button>
+        </div>
       </div>
     );
   }
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 pb-20" style={{ backgroundColor: '#F4F4F4' }}>
+      <div className="max-w-md mx-auto bg-white min-h-screen pb-20" style={{ maxWidth: '430px' }}>
+        
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
-        >
-          <Button
-            variant="outline"
-            onClick={() => window.location.href = '/dashboard/customer'}
-            className="bg-white dark:bg-gray-800"
+        <div className="flex items-center justify-between px-6 pt-6 pb-4">
+          <button
+            onClick={() => router.push('/dashboard/customer')}
+            className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-            Profile Settings
-          </h1>
-          <div className="w-32"></div> {/* Spacer for centering */}
-        </motion.div>
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          
+          <button
+            onClick={handleLogout}
+            className="flex flex-col items-center gap-1 hover:opacity-80 transition-opacity"
+          >
+            <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center">
+              <LogOut className="w-5 h-5 text-gray-600 rotate-180" />
+            </div>
+            <span className="text-xs text-gray-600">Sign out</span>
+          </button>
+        </div>
 
-        {/* Profile Info Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="dark:bg-gray-800">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 dark:text-white">
-                <User className="w-5 h-5" />
-                Personal Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="name" className="dark:text-gray-200">Full Name</Label>
-                {editing ? (
-                  <div className="flex gap-2">
-                    <Input
-                      id="name"
-                      value={editedName}
-                      onChange={(e) => setEditedName(e.target.value)}
-                      className="dark:bg-gray-700 dark:text-white"
-                    />
-                    <Button onClick={handleSaveName} size="sm">
-                      Save
-                    </Button>
-                    <Button onClick={() => {
-                      setEditing(false);
-                      setEditedName(profile.name);
-                    }} variant="outline" size="sm">
-                      Cancel
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                    <span className="dark:text-white">{profile.name}</span>
-                    <Button onClick={() => setEditing(true)} variant="ghost" size="sm">
-                      Edit
-                    </Button>
-                  </div>
-                )}
-              </div>
+        {/* Personal Information Header */}
+        <div className="px-6 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+              <User className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-xl font-bold" style={{ color: '#FF701A' }}>
+              Personal Information
+            </h1>
+          </div>
+        </div>
 
-              {/* Phone */}
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2 dark:text-gray-200">
-                  <Phone className="w-4 h-4" />
-                  Phone Number
-                </Label>
-                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                  <span className="dark:text-white">{profile.phone}</span>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Phone number cannot be changed
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        {/* Form Fields */}
+        <div className="px-6 space-y-6 mb-6">
+          {/* Name Field */}
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-900 mb-2">
+              Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF701A] focus:border-[#FF701A] bg-white"
+              placeholder="Enter your name"
+            />
+          </div>
 
-        {/* Stats Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="dark:bg-gray-800">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 dark:text-white">
-                <TrendingUp className="w-5 h-5" />
-                Account Statistics
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Total Visits</p>
-                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{profile.totalVisits}</p>
-                </div>
-                <div className="p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Rewards Earned</p>
-                  <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                    {Math.floor(profile.totalVisits / 5)}
-                  </p>
-                </div>
-              </div>
+          {/* Phone Number Field */}
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-900 mb-2">
+              Phone Number
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              value={profile.phone}
+              readOnly
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 bg-gray-50 cursor-not-allowed"
+            />
+            <p className="text-xs mt-1" style={{ color: '#EF4444' }}>
+              Phone number can not be changed
+            </p>
+          </div>
+        </div>
 
-              <div className="space-y-3 pt-4 border-t dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Member Since
-                  </span>
-                  <span className="font-medium dark:text-white">
-                    {new Date(profile.memberSince || profile.lastVisit).toLocaleDateString('en-US', {
-                      month: 'long',
-                      year: 'numeric'
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Last Visit
-                  </span>
-                  <span className="font-medium dark:text-white">
-                    {new Date(profile.lastVisit).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        {/* Account Details */}
+        <div className="px-6 mb-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-900">Member Since:</span>
+            <span className="text-sm font-medium text-gray-900">
+              {formatDate(profile.memberSince || profile.lastVisit)}
+            </span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-900">Last Visit:</span>
+            <span className="text-sm font-medium text-gray-900">
+              {formatDate(profile.lastVisit)}
+            </span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-900">Total Visit:</span>
+            <span className="text-sm font-medium text-gray-900">
+              {profile.totalVisits} {profile.totalVisits === 1 ? 'Time' : 'Times'}
+            </span>
+          </div>
+        </div>
 
-        {/* Actions Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="dark:bg-gray-800">
-            <CardHeader>
-              <CardTitle className="dark:text-white">Account Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                variant="outline"
-                className="w-full justify-start dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
-                onClick={() => window.location.href = '/dashboard/customer'}
-              >
-                <TrendingUp className="w-4 h-4 mr-2" />
-                View My Rewards
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-900/20"
-                onClick={handleLogout}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
+        {/* Save Changes Button */}
+        <div className="px-6 mb-4">
+          <button
+            onClick={handleSaveChanges}
+            disabled={saving || !editedName.trim() || editedName.trim() === profile.name}
+            className="w-full text-white font-bold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            style={{
+              backgroundColor: '#FF701A',
+              height: '54px',
+              fontFamily: 'Montserrat, sans-serif',
+              fontWeight: 700,
+              fontSize: '14px',
+            }}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
 
-        {/* Footer Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="text-center text-sm text-gray-500 dark:text-gray-400 pb-6"
-        >
-          <p>Lewis Loyalty Program</p>
-          <p className="mt-1">Earn rewards with every visit</p>
-        </motion.div>
+        {/* View My Rewards Button */}
+        <div className="px-6 mb-6">
+          <button
+            onClick={() => router.push('/dashboard/customer/rewards')}
+            className="w-full text-white font-bold rounded-lg transition-all duration-200 hover:opacity-90 flex items-center justify-center gap-2"
+            style={{
+              backgroundColor: '#FF701A',
+              height: '54px',
+              fontFamily: 'Montserrat, sans-serif',
+              fontWeight: 700,
+              fontSize: '14px',
+            }}
+          >
+            <Gift className="w-5 h-5" />
+            View My Rewards
+          </button>
+        </div>
+
       </div>
+
+      {/* Add Montserrat font */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
+        body {
+          font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+      `}</style>
     </div>
   );
 }
-
-
-
-
-
-
-
-

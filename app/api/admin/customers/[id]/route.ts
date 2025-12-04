@@ -4,6 +4,7 @@ import Customer from '@/models/Customer';
 import Visit from '@/models/Visit';
 import Store from '@/models/Store';
 import Reward from '@/models/Reward';
+import Receipt from '@/models/Receipt';
 import SystemUser from '@/models/SystemUser';
 import { verifyAdminToken } from '@/lib/auth';
 
@@ -53,6 +54,15 @@ export async function GET(
       customerId, 
       storeId 
     }).sort({ issuedAt: -1 }).limit(50);
+
+    // Get receipts for this customer at this store only
+    const receipts = await Receipt.find({
+      customerId,
+      storeId
+    })
+      .populate('storeId', 'name address')
+      .sort({ createdAt: -1 })
+      .limit(50);
 
     // Calculate statistics
     const totalVisits = visitHistory.length;
@@ -155,7 +165,27 @@ export async function GET(
       storeInfo: {
         name: (admin.storeId as any).name,
         address: (admin.storeId as any).address
-      }
+      },
+      receipts: receipts.map((receipt: any) => ({
+        _id: receipt._id?.toString() || receipt._id,
+        imageUrl: receipt.imageUrl,
+        status: receipt.status,
+        reason: receipt.reason,
+        flags: receipt.flags,
+        tin: receipt.tin,
+        invoiceNo: receipt.invoiceNo,
+        dateOnReceipt: receipt.dateOnReceipt,
+        totalAmount: receipt.totalAmount,
+        branchText: receipt.branchText,
+        ocrText: receipt.ocrText,
+        storeId: receipt.storeId ? {
+          _id: (receipt.storeId as any)._id?.toString() || (receipt.storeId as any)._id,
+          name: (receipt.storeId as any).name,
+          address: (receipt.storeId as any).address
+        } : null,
+        createdAt: receipt.createdAt,
+        processedAt: receipt.processedAt
+      }))
     };
 
     return NextResponse.json(customerDetail);

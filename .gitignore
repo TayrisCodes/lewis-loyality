@@ -39,3 +39,7 @@ next-env.d.ts
 
 
 
+
+# Receipt uploads (Phase 2)
+/uploads/receipts/**
+!/uploads/receipts/.gitkeep

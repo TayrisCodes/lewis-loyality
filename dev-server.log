@@ -2,13 +2,13 @@
 > lewis-loyalty@1.0.0 dev
 > next dev
 
- ⚠ Port 3000 is in use by an unknown process, using available port 3002 instead.
    ▲ Next.js 15.5.5
-   - Local:        http://localhost:3002
-   - Network:      http://192.168.100.30:3002
+   - Local:        http://localhost:3000
+   - Network:      http://89.116.22.36:3000
    - Environments: .env.local, .env
    - Experiments (use with caution):
      · serverActions
 
  ✓ Starting...
- ✓ Ready in 28.7s
+ ✓ Ready in 2.6s
+[?25h

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import SystemUser from "@/models/SystemUser";
 import { comparePassword, generateToken, verifyToken, extractTokenFromHeader } from "@/lib/auth";
+import { cookies } from 'next/headers';
 
 /**
  * POST /api/auth - Admin Login
@@ -30,6 +31,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user is active
+    if (!user.isActive) {
+      return NextResponse.json(
+        { error: "Account is inactive" },
+        { status: 401 }
+      );
+    }
+
     // Verify password
     const isValid = await comparePassword(password, user.passwordHash);
 
@@ -54,16 +63,29 @@ export async function POST(request: NextRequest) {
       storeId: user.storeId?.toString(),
     });
 
-    return NextResponse.json({
+    // Create response and set the auth token as a cookie (CRITICAL for authentication to work)
+    const response = NextResponse.json({
       success: true,
       token,
       admin: {
+        id: userId,
         email: user.email,
         name: user.name,
         role: user.role,
         storeId: user.storeId,
       },
     });
+
+    // Set the cookie on the response
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 24 * 60 * 60, // 24 hours
+    });
+
+    return response;
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(

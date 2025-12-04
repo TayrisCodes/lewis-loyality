@@ -35,15 +35,24 @@ export async function GET(
     }
 
     // Format rewards with store information
-    const formattedRewards = customer.rewards?.map((reward: any) => ({
-      id: reward._id,
-      storeName: reward.storeId?.name || 'Unknown Store',
-      storeAddress: reward.storeId?.address || '',
-      rewardType: reward.rewardType || 'Lewis Gift Card',
-      dateIssued: reward.dateIssued,
-      status: reward.status || 'unused',
-      expiresAt: reward.expiresAt,
-    })) || [];
+    const formattedRewards = customer.rewards?.map((reward: any) => {
+      const storeName = typeof reward.storeId === 'object' && reward.storeId !== null && 'name' in reward.storeId
+        ? reward.storeId.name
+        : 'Unknown Store';
+      const storeAddress = typeof reward.storeId === 'object' && reward.storeId !== null && 'address' in reward.storeId
+        ? reward.storeId.address
+        : '';
+      
+      return {
+        id: reward._id,
+        storeName,
+        storeAddress,
+        rewardType: reward.rewardType || 'Lewis Gift Card',
+        dateIssued: reward.dateIssued,
+        status: reward.status || 'unused',
+        expiresAt: reward.expiresAt,
+      };
+    }) || [];
 
     return NextResponse.json({
       success: true,

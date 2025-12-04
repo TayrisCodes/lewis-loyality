@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { motion } from 'framer-motion';
-import { Calendar, Search, CheckCircle, XCircle, Filter } from 'lucide-react';
+import { Calendar, Search, CheckCircle, XCircle, Filter, QrCode, Receipt, Eye } from 'lucide-react';
 
 interface Visit {
   _id: string;
@@ -16,6 +16,15 @@ interface Visit {
   timestamp: string;
   rewardEarned: boolean;
   storeId: string;
+  visitMethod?: 'qr' | 'receipt';  // NEW: Visit method
+  receiptId?: {                     // NEW: Receipt details
+    _id: string;
+    imageUrl: string;
+    status: string;
+    totalAmount?: number;
+    dateOnReceipt?: string;
+    invoiceNo?: string;
+  };
 }
 
 export default function AdminVisitsPage() {
@@ -98,6 +107,8 @@ export default function AdminVisitsPage() {
 
   const totalVisits = filteredVisits.length;
   const rewardsGiven = filteredVisits.filter(v => v.rewardEarned).length;
+  const qrVisits = filteredVisits.filter(v => v.visitMethod === 'qr' || !v.visitMethod).length;
+  const receiptVisits = filteredVisits.filter(v => v.visitMethod === 'receipt').length;
   const todayVisits = filteredVisits.filter(v => {
     const visitDate = new Date(v.timestamp).toDateString();
     const today = new Date().toDateString();
@@ -126,7 +137,7 @@ export default function AdminVisitsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4"
+            className="grid grid-cols-1 md:grid-cols-5 gap-4"
           >
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -135,6 +146,32 @@ export default function AdminVisitsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalVisits}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">QR Visits</CardTitle>
+                <QrCode className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{qrVisits}</div>
+                <p className="text-xs text-muted-foreground">
+                  {totalVisits > 0 ? Math.round((qrVisits / totalVisits) * 100) : 0}%
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Receipt Visits</CardTitle>
+                <Receipt className="h-4 w-4 text-brand-coral" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{receiptVisits}</div>
+                <p className="text-xs text-muted-foreground">
+                  {totalVisits > 0 ? Math.round((receiptVisits / totalVisits) * 100) : 0}%
+                </p>
               </CardContent>
             </Card>
 
@@ -214,6 +251,7 @@ export default function AdminVisitsPage() {
                       <TableHead>Customer</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Visit Time</TableHead>
+                      <TableHead>Method</TableHead>
                       <TableHead>Reward Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -229,20 +267,35 @@ export default function AdminVisitsPage() {
                           {new Date(visit.timestamp).toLocaleString()}
                         </TableCell>
                         <TableCell>
+                          {visit.visitMethod === 'receipt' ? (
+                            <Badge variant="outline" className="border-brand-coral text-brand-coral">
+                              <Receipt className="h-3 w-3 mr-1" />
+                              Receipt
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">
+                              <QrCode className="h-3 w-3 mr-1" />
+                              QR Code
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <Badge variant={visit.rewardEarned ? 'default' : 'secondary'}>
                             {visit.rewardEarned ? 'Redeemed' : 'Available'}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {!visit.rewardEarned && (
+                          {visit.visitMethod === 'receipt' && visit.receiptId ? (
                             <Button
                               size="sm"
-                              onClick={() => handleMarkRewardRedeemed(visit._id)}
-                              className="bg-green-600 hover:bg-green-700"
+                              variant="outline"
+                              onClick={() => window.open(`/dashboard/admin/receipts/${visit.receiptId?._id}`, '_blank')}
                             >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Mark Redeemed
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Receipt
                             </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">QR Visit</span>
                           )}
                         </TableCell>
                       </TableRow>

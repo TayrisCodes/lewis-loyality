@@ -24,7 +24,12 @@ interface Analytics {
   visitsLast7Days: number;
   visitsLast30Days: number;
   rewardsGiven: number;
+  totalRewards?: number;
+  usedRewards?: number;
+  rewardsUsedLast7Days?: number;
+  rewardsUsedLast30Days?: number;
   dailyVisits: Array<{ date: string; visits: number }>;
+  dailyRewardUsage?: Array<{ date: string; rewards: number }>;
   topStores: Array<{ name: string; visitCount: number }>;
   topCustomers: Array<{ 
     _id: string; 
@@ -32,6 +37,18 @@ interface Analytics {
     totalVisits: number; 
     totalRewards: number; 
     lastVisit?: string;
+  }>;
+  rewardsUsedByStore?: Array<{
+    storeId: string;
+    storeName: string;
+    rewardCount: number;
+  }>;
+  rewardsUsedByAdmin?: Array<{
+    adminId: string;
+    adminName: string;
+    adminEmail: string;
+    rewardCount: number;
+    storeCount: number;
   }>;
 }
 
@@ -87,11 +104,26 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => {
     // Check if user is authenticated and is superadmin
-    if (!AuthUtils.isAuthenticated() || !AuthUtils.isSuperAdmin()) {
+    // Give a small delay for cookie to be available after login redirect
+    const checkAuth = setTimeout(() => {
+      const role = AuthUtils.getRole();
+      // If no role in storage, check if middleware will handle it
+      // Don't redirect immediately - let middleware handle authentication
+      if (role && role === 'superadmin') {
+        fetchData();
+      } else if (!role) {
+        // If no role in storage, wait a bit and try to fetch
+        // The middleware will redirect if cookie is invalid
+        fetchData().catch(() => {
+          // If fetch fails (unauthorized), middleware will redirect
+          // Don't redirect here to avoid double redirect
+        });
+      } else {
       router.push('/login');
-      return;
     }
-    fetchData();
+    }, 100);
+
+    return () => clearTimeout(checkAuth);
   }, [router]);
 
   const fetchData = async () => {

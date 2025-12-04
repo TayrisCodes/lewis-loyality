@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import dbConnect from '@/lib/db';
 import Store from '@/models/Store';
 import User from '@/models/SystemUser';
 import { requireSuperAdmin } from '@/lib/auth';
@@ -38,7 +39,7 @@ export async function PUT(
     await requireSuperAdmin();
 
     const { id } = await params;
-    const { name, address, adminId, isActive } = await request.json();
+    const { name, address, adminId, isActive, tin } = await request.json();
 
     if (adminId) {
       const admin = await User.findById(adminId);
@@ -50,9 +51,17 @@ export async function PUT(
       }
     }
 
+    // Prepare update data
+    const updateData: any = { name, address, adminId, isActive };
+    
+    // Handle TIN - can be set or cleared (empty string means remove TIN)
+    if (tin !== undefined) {
+      updateData.tin = tin && tin.trim() !== '' ? tin.trim() : undefined;
+    }
+
     const store = await Store.findByIdAndUpdate(
       id,
-      { name, address, adminId, isActive },
+      updateData,
       { new: true }
     ).populate('adminId', 'name email');
 
@@ -81,7 +90,7 @@ export async function DELETE(
     await requireSuperAdmin();
 
     const { id } = await params;
-    const store = await Store.findByIdAndDelete(id);
+    const store = await Store.findById(id);
 
     if (!store) {
       return NextResponse.json(
@@ -89,6 +98,14 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    // Unassign admin from store before deleting
+    if (store.adminId) {
+      await User.findByIdAndUpdate(store.adminId, { storeId: null });
+    }
+
+    // Delete the store
+    await Store.findByIdAndDelete(id);
 
     return NextResponse.json({ message: 'Store deleted successfully' });
   } catch (error) {
