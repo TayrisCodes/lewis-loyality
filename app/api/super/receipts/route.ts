@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Populate store names
-    const storeIds = receiptsByStore.map(r => r._id);
+    const storeIds = receiptsByStore.map(r => r._id).filter((id): id is NonNullable<typeof id> => id != null);
     const stores = await Store.find({ _id: { $in: storeIds } }).select('_id name');
     const storeMap = stores.reduce((acc: any, store) => {
       acc[String(store._id)] = store.name;
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
 
     const storeStats = receiptsByStore.map(r => ({
       storeId: r._id,
-      storeName: storeMap[r._id.toString()] || 'Unknown',
+      storeName: r._id ? (storeMap[r._id.toString()] || 'Unknown') : 'No Store',
       total: r.count,
       flagged: r.flagged,
       approved: r.approved,

@@ -81,53 +81,25 @@ export default function AdminProfilePage() {
     setMessage(null);
 
     try {
-      // First verify current password by attempting login
-      const verifyResponse = await fetch('/api/admin/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: user?.email,
-          password: passwordForm.currentPassword,
-        }),
+      // Change password using the profile endpoint
+      const data = await ApiClient.put('/api/profile/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
       });
 
-      if (!verifyResponse.ok) {
-        setMessage({ type: 'error', text: 'Current password is incorrect' });
-        setChangingPassword(false);
-        return;
-      }
-
-      // Get user ID from token
-      const userId = AuthUtils.getId();
-      if (!userId) {
-        setMessage({ type: 'error', text: 'Unable to verify user identity' });
-        setChangingPassword(false);
-        return;
-      }
-
-      // Change password using superadmin endpoint (admins are also in SystemUser)
-      const changeResponse = await fetch(`/api/super/admins/${userId}/change-password`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPassword: passwordForm.newPassword }),
+      setMessage({ type: 'success', text: 'Password changed successfully!' });
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
       });
-
-      const data = await changeResponse.json();
-
-      if (changeResponse.ok) {
-        setMessage({ type: 'success', text: 'Password changed successfully!' });
-        setPasswordForm({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: '',
-        });
-        setTimeout(() => setMessage(null), 5000);
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to change password' });
-      }
+      setTimeout(() => setMessage(null), 5000);
     } catch (error: any) {
       console.error('Error changing password:', error);
-      setMessage({ type: 'error', text: error.message || 'Failed to change password' });
+      setMessage({ 
+        type: 'error', 
+        text: error.error || error.message || 'Failed to change password' 
+      });
     } finally {
       setChangingPassword(false);
     }

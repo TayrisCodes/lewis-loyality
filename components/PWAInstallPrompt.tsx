@@ -51,8 +51,10 @@ export default function PWAInstallPrompt() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // Universal fallback: Show prompt after delay for all browsers
+    // Only show if beforeinstallprompt hasn't fired and we're not in standalone mode
     const universalTimeout = setTimeout(() => {
       if (!promptFiredRef.current && !isStandaloneMode) {
+        // Show prompt even if beforeinstallprompt didn't fire (for browsers like Safari)
         setShowPrompt(true);
       }
     }, 5000);
@@ -74,18 +76,42 @@ export default function PWAInstallPrompt() {
 
   const handleInstall = async () => {
     if (deferredPrompt) {
-      // Chrome, Edge, Samsung Internet - use native prompt
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+      try {
+        // Chrome, Edge, Samsung Internet - use native prompt
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
 
-      if (outcome === 'accepted') {
+        if (outcome === 'accepted') {
+          setShowPrompt(false);
+          setIsInstalled(true);
+        } else {
+          // User dismissed the prompt
+          setShowPrompt(false);
+          localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+        }
+
+        setDeferredPrompt(null);
+      } catch (error) {
+        console.error('Error showing install prompt:', error);
+        // Fallback: show manual instructions
         setShowPrompt(false);
-        setIsInstalled(true);
+        alert('To install this app:\n\nOn Chrome/Edge: Click the menu (⋮) and select "Install app"\nOn Safari (iOS): Tap Share → Add to Home Screen');
+        localStorage.setItem('pwa-install-dismissed', Date.now().toString());
       }
-
-      setDeferredPrompt(null);
     } else {
-      // For other browsers, just dismiss
+      // For browsers that don't support beforeinstallprompt (Safari, etc.)
+      // Show manual instructions
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        alert('To install this app:\n\n1. Tap the Share button (square with arrow)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add"');
+      } else if (isAndroid) {
+        alert('To install this app:\n\n1. Tap the menu (⋮) in your browser\n2. Select "Install app" or "Add to Home screen"');
+      } else {
+        alert('To install this app:\n\nOn Chrome/Edge: Click the menu (⋮) and select "Install app" or look for the install icon in the address bar.');
+      }
+      
       setShowPrompt(false);
       localStorage.setItem('pwa-install-dismissed', Date.now().toString());
     }

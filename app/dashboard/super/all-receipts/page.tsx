@@ -34,7 +34,7 @@ interface Receipt {
     _id: string;
     name: string;
     address: string;
-  };
+  } | null;
   imageUrl: string;
   status: string;
   totalAmount?: number;
@@ -444,12 +444,19 @@ export default function GlobalReceiptDashboardPage() {
                     {receipts.map((receipt) => (
                       <TableRow key={receipt._id}>
                         <TableCell>
-                          <div>
-                            <div className="font-medium text-sm">{receipt.storeId.name}</div>
-                            <div className="text-xs text-gray-500 truncate max-w-[150px]">
-                              {receipt.storeId.address}
+                          {receipt.storeId ? (
+                            <div>
+                              <div className="font-medium text-sm">{receipt.storeId.name}</div>
+                              <div className="text-xs text-gray-500 truncate max-w-[150px]">
+                                {receipt.storeId.address}
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <div>
+                              <div className="font-medium text-sm text-gray-400">No Store</div>
+                              <div className="text-xs text-gray-400">Unassigned</div>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>{receipt.customerPhone}</TableCell>
                         <TableCell>
